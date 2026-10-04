@@ -8,6 +8,7 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.data.mapping.PropertyReferenceException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -111,6 +112,13 @@ public class GlobalExceptionHandler {
       HttpServletRequest request) {
     return respond(HttpStatus.CONFLICT, "Conflict",
         "The resource was modified by someone else. Reload and try again.", request, List.of());
+  }
+
+  @ExceptionHandler(PessimisticLockingFailureException.class)
+  public ResponseEntity<ApiError> handleLockFailure(PessimisticLockingFailureException ex,
+      HttpServletRequest request) {
+    return respond(HttpStatus.CONFLICT, "Conflict", "Another request changed this resource at the same time. "
+        + "Please try again.", request, List.of());
   }
 
   @ExceptionHandler(DataIntegrityViolationException.class)

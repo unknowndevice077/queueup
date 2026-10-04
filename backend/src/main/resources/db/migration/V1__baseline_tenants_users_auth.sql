@@ -6,7 +6,7 @@ CREATE TABLE tenant (
     name                       VARCHAR(120) NOT NULL,
     slug                       VARCHAR(60)  NOT NULL,
     timezone                   VARCHAR(64)  NOT NULL DEFAULT 'Asia/Manila',
-    currency                   CHAR(3)      NOT NULL DEFAULT 'PHP',
+    currency                   VARCHAR(3)   NOT NULL DEFAULT 'PHP',
     contact_email              VARCHAR(254),
     contact_phone              VARCHAR(32),
     address                    VARCHAR(255),

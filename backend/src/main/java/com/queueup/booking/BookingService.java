@@ -29,13 +29,14 @@ import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.DataAccessException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -51,7 +52,7 @@ public class BookingService {
 
   private static final Logger log = LoggerFactory.getLogger(BookingService.class);
   private static final String ENTITY = "BOOKING";
-  private static final String EXCLUSION_VIOLATION = "23P01";
+  private static final Set<String> SLOT_RACE_STATES = Set.of("23P01", "40P01");
 
   private final BookingRepository bookingRepository;
   private final TenantRepository tenantRepository;
@@ -262,11 +263,16 @@ public class BookingService {
         .orElseThrow(SlotUnavailableException::new);
   }
 
+  /**
+   * Inserts or moves a booking. When two transactions race for overlapping slots, PostgreSQL rejects the loser
+   * with an exclusion violation (23P01) or, if both checks waited on each other, a deadlock (40P01). Both mean
+   * someone else got the slot first.
+   */
   private void saveGuardingOverlap(Booking booking) {
     try {
       bookingRepository.saveAndFlush(booking);
-    } catch (DataIntegrityViolationException ex) {
-      if (isExclusionViolation(ex)) {
+    } catch (DataAccessException ex) {
+      if (isSlotRace(ex)) {
         throw new SlotUnavailableException();
       }
       throw ex;
@@ -312,9 +318,9 @@ public class BookingService {
     return mapper.toResponse(booking, TenantView.of(tenant));
   }
 
-  private static boolean isExclusionViolation(Throwable ex) {
+  private static boolean isSlotRace(Throwable ex) {
     for (Throwable cause = ex; cause != null; cause = cause.getCause()) {
-      if (cause instanceof SQLException sql && EXCLUSION_VIOLATION.equals(sql.getSQLState())) {
+      if (cause instanceof SQLException sql && SLOT_RACE_STATES.contains(sql.getSQLState())) {
         return true;
       }
     }
