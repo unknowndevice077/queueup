@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Booking cancelled</title>
+</head>
+<body style="margin:0;padding:24px;background:#f4f4f5;font-family:Arial,Helvetica,sans-serif;color:#18181b;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+       style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:12px;overflow:hidden;">
+  <tr>
+    <td style="background:#b91c1c;color:#ffffff;padding:20px 24px;font-size:20px;font-weight:bold;">
+      Booking cancelled
+    </td>
+  </tr>
+  <tr>
+    <td style="padding:24px;">
+      <p style="margin:0 0 16px;">
+        Hi <span th:text="${customerName}">Juan</span>, your appointment at
+        <strong th:text="${businessName}">Kanto Cuts</strong> has been cancelled.
+      </p>
+      <table role="presentation" cellpadding="6" cellspacing="0" style="width:100%;border-collapse:collapse;">
+        <tr><td style="color:#71717a;width:110px;">Service</td><td th:text="${serviceName}">Haircut</td></tr>
+        <tr><td style="color:#71717a;">Was on</td><td th:text="${when}">Tue, 6 Oct 2026 at 10:00 AM</td></tr>
+        <tr th:if="${cancelledReason != null}"><td style="color:#71717a;">Reason</td><td th:text="${cancelledReason}">Reason</td></tr>
+      </table>
+      <p style="margin:24px 0 0;">
+        <a th:href="${bookAgainUrl}"
+           style="display:inline-block;background:#18181b;color:#ffffff;text-decoration:none;padding:10px 18px;border-radius:8px;">
+          Book another time
+        </a>
+      </p>
+    </td>
+  </tr>
+</table>
+</body>
+</html>
