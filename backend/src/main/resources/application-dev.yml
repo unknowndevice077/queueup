@@ -1,0 +1,9 @@
+queueup:
+  security:
+    # Dev-only fallback so `./mvnw spring-boot:run` works out of the box. Never used in prod (see application-prod.yml).
+    jwt-secret: ${JWT_SECRET:ZGV2LW9ubHktc2VjcmV0LWNoYW5nZS1tZS1xdWV1ZXVwLWRldi1zZWNyZXQtMzItYnl0ZXMh}
+
+logging:
+  level:
+    com.queueup: DEBUG
+    org.hibernate.SQL: INFO

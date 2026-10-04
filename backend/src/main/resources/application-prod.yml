@@ -1,0 +1,13 @@
+spring:
+  datasource:
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:5}
+
+queueup:
+  security:
+    jwt-secret: ${JWT_SECRET}
+
+logging:
+  level:
+    root: INFO
+    com.queueup: INFO
