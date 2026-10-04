@@ -53,9 +53,9 @@ export default function DisplayBoard() {
               serving.map((entry, index) => (
                 <div
                   key={entry.id}
-                  className={`rounded-3xl p-8 text-center ${index === 0 ? 'bg-emerald-500 text-slate-950' : 'bg-slate-800'}`}
+                  className={`overflow-hidden rounded-3xl px-4 py-8 text-center ${index === 0 ? 'bg-emerald-500 text-slate-950' : 'bg-slate-800'}`}
                 >
-                  <p className="text-7xl font-black tabular-nums sm:text-9xl">
+                  <p className="text-[clamp(3rem,7vw,8rem)] font-black leading-none tabular-nums">
                     {ticketLabel(entry.ticketNumber)}
                   </p>
                   <p className="mt-3 text-xl font-medium sm:text-2xl">
@@ -80,10 +80,10 @@ export default function DisplayBoard() {
               upNext.map((entry) => (
                 <li
                   key={entry.id}
-                  className="flex items-center justify-between rounded-2xl bg-slate-800 px-6 py-4 text-3xl font-bold tabular-nums sm:text-5xl"
+                  className="flex items-center justify-between rounded-2xl bg-slate-800 px-6 py-4 text-[clamp(1.75rem,3vw,3rem)] font-bold tabular-nums"
                 >
                   <span>{ticketLabel(entry.ticketNumber)}</span>
-                  <span className="text-base font-medium text-slate-400 sm:text-xl">
+                  <span className="ml-4 text-right text-base font-medium text-slate-400 xl:text-xl">
                     {entry.serviceName ?? ''}
                   </span>
                 </li>

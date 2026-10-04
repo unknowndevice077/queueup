@@ -19,7 +19,7 @@ public interface MembershipRepository extends JpaRepository<Membership, UUID> {
   @Query("""
       select m from Membership m join fetch m.user u
       where m.tenantId = :tenantId
-      order by m.role desc, u.fullName asc
+      order by m.role asc, u.fullName asc
       """)
   List<Membership> findAllWithUserByTenantId(@Param("tenantId") UUID tenantId);
 
