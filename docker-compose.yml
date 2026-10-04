@@ -1,0 +1,74 @@
+# Local stack: `docker compose up --build`, then open http://localhost:5173
+# Every variable has a local-only default, so a .env file is optional (see .env.example).
+name: queueup
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-queueup}
+      POSTGRES_USER: ${DB_USER:-queueup}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-queueup-local}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  mailpit:
+    image: axllent/mailpit:v1.21
+    ports:
+      - "8025:8025" # web UI
+      - "1025:1025" # SMTP
+
+  backend:
+    build: ./backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+      DATABASE_URL: ${DATABASE_URL:-jdbc:postgresql://postgres:5432/queueup}
+      DB_USER: ${DB_USER:-queueup}
+      DB_PASSWORD: ${DB_PASSWORD:-queueup-local}
+      # Local-only default. Generate a real one for any shared environment: openssl rand -base64 48
+      JWT_SECRET: ${JWT_SECRET:-bG9jYWwtZG9ja2VyLWNvbXBvc2Utb25seS1zZWNyZXQtZG8tbm90LXVzZS1pbi1wcm9kIQ==}
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:5173,http://localhost:8080}
+      MAIL_HOST: ${MAIL_HOST:-mailpit}
+      MAIL_PORT: ${MAIL_PORT:-1025}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_SMTP_AUTH: ${MAIL_SMTP_AUTH:-false}
+      MAIL_STARTTLS: ${MAIL_STARTTLS:-false}
+      MAIL_FROM: ${MAIL_FROM:-QueueUp <no-reply@queueup.local>}
+      PAYMONGO_SECRET_KEY: ${PAYMONGO_SECRET_KEY:-}
+      PAYMONGO_WEBHOOK_SECRET: ${PAYMONGO_WEBHOOK_SECRET:-}
+      SEED_DEMO: ${SEED_DEMO:-true}
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/8080 && printf \"GET /actuator/health HTTP/1.0\\r\\n\\r\\n\" >&3 && grep -q UP <&3'"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: ${VITE_API_URL:-}
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "5173:80"
+
+volumes:
+  pgdata:
