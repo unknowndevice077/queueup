@@ -1,0 +1,28 @@
+spring:
+  jpa:
+    properties:
+      hibernate:
+        generate_statistics: true
+  mail:
+    host: localhost
+    port: 3025
+
+queueup:
+  frontend-origin: http://localhost:5173
+  seed-demo: false
+  security:
+    jwt-secret: dGVzdC1vbmx5LXNlY3JldC1mb3ItcXVldWV1cC1pbnRlZ3JhdGlvbi10ZXN0cy0zMmI=
+    bcrypt-strength: 4
+    auth-rate-limit-per-minute: 10000
+  scheduling:
+    enabled: false
+  payments:
+    paymongo:
+      secret-key: sk_test_dummy
+      webhook-secret: whsk_test_secret
+
+logging:
+  level:
+    root: WARN
+    com.queueup: INFO
+    org.hibernate.engine.internal.StatisticalLoggingSessionEventListener: OFF
