@@ -1,10 +1,11 @@
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { useState } from 'react';
 import { useAuth } from '@/auth/AuthContext';
-import { Button, Card, Field } from '@/components/ui';
+import { Button, Field } from '@/components/ui';
+import { AuthShell, FormError } from '@/components/AuthShell';
 import { ApiError } from '@/lib/api';
 
 const schema = z.object({
@@ -15,20 +16,22 @@ const schema = z.object({
 type LoginForm = z.infer<typeof schema>;
 
 const DEMO_ACCOUNTS = [
-  { label: 'Owner', email: 'owner@demo.queueup' },
-  { label: 'Staff', email: 'staff@demo.queueup' },
-  { label: 'Customer', email: 'customer@demo.queueup' },
+  { label: 'Owner', email: 'owner@demo.queueup', note: 'Both demo businesses' },
+  { label: 'Staff', email: 'staff@demo.queueup', note: 'Barber at Kanto Cuts' },
+  { label: 'Customer', email: 'customer@demo.queueup', note: 'Has upcoming bookings' },
 ];
 
 export function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
   const [params] = useSearchParams();
+  const next = params.get('next');
   const [formError, setFormError] = useState<string | null>(null);
   const {
     register,
     handleSubmit,
     setValue,
+    setFocus,
     formState: { errors, isSubmitting },
   } = useForm<LoginForm>({ resolver: zodResolver(schema) });
 
@@ -36,7 +39,6 @@ export function LoginPage() {
     setFormError(null);
     try {
       const profile = await login(values.email, values.password);
-      const next = params.get('next');
       if (next && next.startsWith('/')) {
         navigate(next, { replace: true });
       } else {
@@ -48,61 +50,71 @@ export function LoginPage() {
   };
 
   return (
-    <div className="mx-auto max-w-md px-4 py-12">
-      <h1 className="text-2xl font-bold">Sign in</h1>
-      <p className="mt-1 text-sm text-slate-600">
-        New here?{' '}
-        <Link
-          to={`/register${params.get('next') ? `?next=${encodeURIComponent(params.get('next')!)}` : ''}`}
-          className="font-medium text-brand-600 underline"
-        >
-          Create an account
-        </Link>
-      </p>
-      <Card className="mt-6">
-        <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
-          {formError && (
-            <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
-              {formError}
-            </p>
-          )}
-          <Field
-            label="Email"
-            type="email"
-            autoComplete="email"
-            {...register('email')}
-            error={errors.email?.message}
-          />
-          <Field
-            label="Password"
-            type="password"
-            autoComplete="current-password"
-            {...register('password')}
-            error={errors.password?.message}
-          />
-          <Button type="submit" className="w-full" loading={isSubmitting}>
-            Sign in
-          </Button>
-        </form>
-      </Card>
-      <Card className="mt-4 bg-brand-50 ring-brand-100">
-        <p className="text-sm font-semibold text-brand-900">Demo accounts (password Demo12345!)</p>
-        <div className="mt-2 flex flex-wrap gap-2">
-          {DEMO_ACCOUNTS.map((account) => (
-            <button
-              key={account.email}
-              type="button"
-              className="rounded-md bg-white px-2.5 py-1 text-sm font-medium text-brand-700 ring-1 ring-brand-200 hover:bg-brand-100"
-              onClick={() => {
-                setValue('email', account.email);
-                setValue('password', 'Demo12345!');
-              }}
-            >
-              Use {account.label}
-            </button>
-          ))}
+    <AuthShell
+      title="Sign in"
+      intro={
+        <>
+          No account yet?{' '}
+          <Link
+            to={`/register${next ? `?next=${encodeURIComponent(next)}` : ''}`}
+            className="font-medium text-ink underline underline-offset-4"
+          >
+            Create one
+          </Link>
+          . It takes a minute.
+        </>
+      }
+      aside={
+        <div>
+          <p className="eyebrow">Demo accounts</p>
+          <p className="mt-2 text-sm text-ink-2">
+            Every demo account uses the password <span className="num">Demo12345!</span>
+          </p>
+          <ul className="mt-4 divide-y divide-line border-y border-line">
+            {DEMO_ACCOUNTS.map((account) => (
+              <li key={account.email} className="flex items-center justify-between gap-4 py-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium">{account.label}</p>
+                  <p className="num truncate text-[13px] text-ink-muted">{account.email}</p>
+                  <p className="text-xs text-ink-faint">{account.note}</p>
+                </div>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    setValue('email', account.email);
+                    setValue('password', 'Demo12345!');
+                    setFocus('password');
+                  }}
+                >
+                  Use {account.label}
+                </Button>
+              </li>
+            ))}
+          </ul>
         </div>
-      </Card>
-    </div>
+      }
+    >
+      <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-5">
+        <FormError message={formError} />
+        <Field
+          label="Email"
+          type="email"
+          autoComplete="email"
+          {...register('email')}
+          error={errors.email?.message}
+        />
+        <Field
+          label="Password"
+          type="password"
+          autoComplete="current-password"
+          {...register('password')}
+          error={errors.password?.message}
+        />
+        <Button type="submit" size="lg" className="w-full" loading={isSubmitting}>
+          Sign in
+        </Button>
+      </form>
+    </AuthShell>
   );
 }

@@ -7,16 +7,7 @@ import { api } from '@/lib/api';
 import { formatDuration, formatPeso } from '@/lib/format';
 import { queryKeys } from '@/lib/queries';
 import type { Service } from '@/lib/types';
-import {
-  Badge,
-  Button,
-  Card,
-  EmptyState,
-  ErrorState,
-  Field,
-  PageHeader,
-  SkeletonList,
-} from '@/components/ui';
+import { Badge, Button, EmptyState, ErrorState, Field, PageHeader, SkeletonList } from '@/components/ui';
 import { useToast } from '@/components/Toaster';
 import { useDashboard } from './DashboardLayout';
 
@@ -46,26 +37,45 @@ export default function ServicesPage() {
       queryClient.invalidateQueries({ queryKey: queryKeys.publicTenant(slug) }),
     ]);
 
-  const deactivate = useMutation({
-    mutationFn: (service: Service) => api.del(`/api/t/${slug}/services/${service.id}`),
-    onSuccess: () => {
-      toast.success('Service hidden from customers.');
+  const setActive = useMutation({
+    mutationFn: async ({ service, active }: { service: Service; active: boolean }) =>
+      active
+        ? api.put(`/api/t/${slug}/services/${service.id}`, {
+            name: service.name,
+            description: service.description,
+            durationMinutes: service.durationMinutes,
+            bufferMinutes: service.bufferMinutes,
+            priceCentavos: service.priceCentavos,
+            active: true,
+          })
+        : api.del(`/api/t/${slug}/services/${service.id}`),
+    onSuccess: (_, { active }) => {
+      toast.success(active ? 'Service is bookable again.' : 'Service hidden from customers.');
       return invalidate();
     },
     onError: (e) => toast.error(e),
   });
 
+  const services = data ?? [];
+
   return (
     <div>
       <PageHeader
+        eyebrow="Set up"
         title="Services"
-        description="What customers can book. Buffer is clean-up time blocked after each booking."
-        actions={<Button onClick={() => setEditing('new')}>Add service</Button>}
+        description="What customers can book. Clean-up time is blocked after each booking so you're never rushed."
+        actions={
+          editing === null && (
+            <Button variant="ink" onClick={() => setEditing('new')}>
+              Add service
+            </Button>
+          )
+        }
       />
-      {editing && (
+      {editing === 'new' && (
         <ServiceEditor
           slug={slug}
-          service={editing === 'new' ? null : editing}
+          service={null}
           onDone={async () => {
             setEditing(null);
             await invalidate();
@@ -76,63 +86,97 @@ export default function ServicesPage() {
         <SkeletonList rows={4} />
       ) : error ? (
         <ErrorState error={error} onRetry={() => refetch()} />
-      ) : (data ?? []).length === 0 ? (
-        <EmptyState title="No services yet">Add your first service so customers can book.</EmptyState>
+      ) : services.length === 0 ? (
+        <EmptyState title="No services yet">Add your first service so customers can book it.</EmptyState>
       ) : (
-        <Card className="overflow-x-auto p-0">
-          <table className="w-full text-left text-sm">
-            <thead className="border-b border-slate-200 text-slate-500">
-              <tr>
-                <th className="px-4 py-3 font-medium">Service</th>
-                <th className="px-4 py-3 font-medium">Duration</th>
-                <th className="px-4 py-3 font-medium">Price</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3">
+        <div className="overflow-x-auto rounded-lg border border-line bg-surface">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-line text-left">
+                <th className="eyebrow px-4 py-2.5 font-medium">Service</th>
+                <th className="eyebrow px-4 py-2.5 font-medium">Time</th>
+                <th className="eyebrow px-4 py-2.5 text-right font-medium">Price</th>
+                <th className="eyebrow px-4 py-2.5 font-medium">Status</th>
+                <th className="px-4 py-2.5">
                   <span className="sr-only">Actions</span>
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
-              {data!.map((service) => (
-                <tr key={service.id}>
-                  <td className="px-4 py-3">
-                    <p className="font-medium">{service.name}</p>
-                    {service.description && <p className="text-slate-500">{service.description}</p>}
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    {formatDuration(service.durationMinutes)}
-                    {service.bufferMinutes > 0 && (
-                      <span className="text-slate-500"> +{service.bufferMinutes}m</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap">{formatPeso(service.priceCentavos)}</td>
-                  <td className="px-4 py-3">
-                    <Badge
-                      value={service.active ? 'CONFIRMED' : 'CANCELLED'}
-                      label={service.active ? 'active' : 'hidden'}
-                    />
-                  </td>
-                  <td className="px-4 py-3 text-right whitespace-nowrap">
-                    <Button size="sm" variant="ghost" onClick={() => setEditing(service)}>
-                      Edit
-                    </Button>
-                    {service.active && (
-                      <Button size="sm" variant="ghost" onClick={() => deactivate.mutate(service)}>
-                        Hide
+            <tbody className="divide-y divide-line">
+              {services.map((service) =>
+                editing !== null && editing !== 'new' && editing.id === service.id ? (
+                  <tr key={service.id}>
+                    <td colSpan={5} className="bg-paper/60 p-0">
+                      <ServiceEditor
+                        slug={slug}
+                        service={service}
+                        embedded
+                        onDone={async () => {
+                          setEditing(null);
+                          await invalidate();
+                        }}
+                      />
+                    </td>
+                  </tr>
+                ) : (
+                  <tr key={service.id} className={service.active ? '' : 'text-ink-muted'}>
+                    <td className="px-4 py-3">
+                      <p className="font-medium text-ink">{service.name}</p>
+                      {service.description && (
+                        <p className="text-[13px] text-ink-muted">{service.description}</p>
+                      )}
+                    </td>
+                    <td className="num whitespace-nowrap px-4 py-3">
+                      {formatDuration(service.durationMinutes)}
+                      {service.bufferMinutes > 0 && (
+                        <span className="block text-xs text-ink-faint">
+                          +{service.bufferMinutes} min clean-up
+                        </span>
+                      )}
+                    </td>
+                    <td className="num whitespace-nowrap px-4 py-3 text-right">
+                      {formatPeso(service.priceCentavos)}
+                    </td>
+                    <td className="px-4 py-3">
+                      <Badge
+                        value={service.active ? 'CONFIRMED' : 'DONE'}
+                        label={service.active ? 'Bookable' : 'Hidden'}
+                      />
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-right">
+                      <Button size="sm" variant="ghost" onClick={() => setEditing(service)}>
+                        Edit
                       </Button>
-                    )}
-                  </td>
-                </tr>
-              ))}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setActive.mutate({ service, active: !service.active })}
+                      >
+                        {service.active ? 'Hide' : 'Show'}
+                      </Button>
+                    </td>
+                  </tr>
+                ),
+              )}
             </tbody>
           </table>
-        </Card>
+        </div>
       )}
     </div>
   );
 }
 
-function ServiceEditor({ slug, service, onDone }: { slug: string; service: Service | null; onDone(): void }) {
+function ServiceEditor({
+  slug,
+  service,
+  embedded = false,
+  onDone,
+}: {
+  slug: string;
+  service: Service | null;
+  embedded?: boolean;
+  onDone(): void;
+}) {
   const toast = useToast();
   const {
     register,
@@ -156,7 +200,7 @@ function ServiceEditor({ slug, service, onDone }: { slug: string; service: Servi
       durationMinutes: values.durationMinutes,
       bufferMinutes: values.bufferMinutes,
       priceCentavos: Math.round(values.pricePesos * 100),
-      active: true,
+      active: service?.active ?? true,
     };
     try {
       if (service) {
@@ -164,7 +208,7 @@ function ServiceEditor({ slug, service, onDone }: { slug: string; service: Servi
       } else {
         await api.post(`/api/t/${slug}/services`, body);
       }
-      toast.success(service ? 'Service updated.' : 'Service added.');
+      toast.success(service ? `Saved ${values.name}.` : `Added ${values.name}.`);
       onDone();
     } catch (e) {
       toast.error(e);
@@ -172,10 +216,30 @@ function ServiceEditor({ slug, service, onDone }: { slug: string; service: Servi
   };
 
   return (
-    <Card className="mb-6">
-      <h2 className="mb-4 font-semibold">{service ? `Edit ${service.name}` : 'New service'}</h2>
-      <form onSubmit={handleSubmit(onSubmit)} noValidate className="grid gap-4 sm:grid-cols-2">
+    <form
+      onSubmit={handleSubmit(onSubmit)}
+      noValidate
+      className={embedded ? 'p-4' : 'mb-6 rounded-lg border border-ink bg-surface p-5'}
+    >
+      {!embedded && <h2 className="mb-4 font-medium">New service</h2>}
+      <div className="grid gap-4 sm:grid-cols-[2fr,1fr,1fr,1fr]">
         <Field label="Name" {...register('name')} error={errors.name?.message} />
+        <Field
+          label="Minutes"
+          type="number"
+          min={5}
+          max={480}
+          {...register('durationMinutes')}
+          error={errors.durationMinutes?.message}
+        />
+        <Field
+          label="Clean-up (min)"
+          type="number"
+          min={0}
+          max={240}
+          {...register('bufferMinutes')}
+          error={errors.bufferMinutes?.message}
+        />
         <Field
           label="Price (₱)"
           type="number"
@@ -185,36 +249,20 @@ function ServiceEditor({ slug, service, onDone }: { slug: string; service: Servi
           error={errors.pricePesos?.message}
         />
         <Field
-          label="Duration (minutes)"
-          type="number"
-          min={5}
-          max={480}
-          {...register('durationMinutes')}
-          error={errors.durationMinutes?.message}
-        />
-        <Field
-          label="Buffer after (minutes)"
-          type="number"
-          min={0}
-          max={240}
-          {...register('bufferMinutes')}
-          error={errors.bufferMinutes?.message}
-        />
-        <Field
-          label="Description"
-          className="sm:col-span-2"
+          label="Description (optional)"
+          className="sm:col-span-4"
           {...register('description')}
           error={errors.description?.message}
         />
-        <div className="flex gap-2 sm:col-span-2">
-          <Button type="submit" loading={isSubmitting}>
-            Save
-          </Button>
-          <Button type="button" variant="secondary" onClick={onDone}>
-            Cancel
-          </Button>
-        </div>
-      </form>
-    </Card>
+      </div>
+      <div className="mt-4 flex gap-2">
+        <Button type="submit" loading={isSubmitting}>
+          {service ? 'Save' : 'Add service'}
+        </Button>
+        <Button type="button" variant="ghost" onClick={onDone}>
+          Cancel
+        </Button>
+      </div>
+    </form>
   );
 }

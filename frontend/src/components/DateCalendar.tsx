@@ -10,7 +10,7 @@ interface DateCalendarProps {
   maxDaysAhead?: number;
 }
 
-const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
 function monthOf(date: string) {
   const [y, m] = date.split('-').map(Number);
@@ -29,8 +29,7 @@ export function DateCalendar({ value, onChange, today, maxDaysAhead = 60 }: Date
   const cells = useMemo(() => {
     const first = new Date(Date.UTC(visible.year, visible.month - 1, 1));
     const daysInMonth = new Date(Date.UTC(visible.year, visible.month, 0)).getUTCDate();
-    const leading = first.getUTCDay();
-    const result: (string | null)[] = Array.from({ length: leading }, () => null);
+    const result: (string | null)[] = Array.from({ length: first.getUTCDay() }, () => null);
     for (let day = 1; day <= daysInMonth; day++) {
       result.push(`${visible.year}-${pad(visible.month)}-${pad(day)}`);
     }
@@ -40,8 +39,7 @@ export function DateCalendar({ value, onChange, today, maxDaysAhead = 60 }: Date
   const label = new Intl.DateTimeFormat('en-PH', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(
     new Date(Date.UTC(visible.year, visible.month - 1, 1)),
   );
-  const firstOfVisible = `${visible.year}-${pad(visible.month)}-01`;
-  const canGoBack = firstOfVisible > today.slice(0, 8) + '01';
+  const canGoBack = `${visible.year}-${pad(visible.month)}-01` > today.slice(0, 8) + '01';
   const canGoForward = `${visible.year}-${pad(visible.month)}-31` < lastDay;
 
   const shiftMonth = (delta: number) =>
@@ -50,45 +48,69 @@ export function DateCalendar({ value, onChange, today, maxDaysAhead = 60 }: Date
       return { year: Math.floor(index / 12), month: (index % 12) + 1 };
     });
 
+  const navButton =
+    'grid h-8 w-8 place-items-center rounded-md border border-line-strong text-ink-2 hover:bg-paper disabled:border-line disabled:text-ink-faint';
+
   return (
-    <div className="w-full max-w-sm rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
+    <div className="w-full max-w-[360px]">
       <div className="mb-3 flex items-center justify-between">
-        <button
-          type="button"
-          onClick={() => shiftMonth(-1)}
-          disabled={!canGoBack}
-          aria-label="Previous month"
-          className="rounded-md p-2 text-slate-600 hover:bg-slate-100 disabled:opacity-30"
-        >
-          ‹
-        </button>
-        <h3 className="font-semibold" aria-live="polite">
+        <h3 className="font-medium" aria-live="polite">
           {label}
         </h3>
-        <button
-          type="button"
-          onClick={() => shiftMonth(1)}
-          disabled={!canGoForward}
-          aria-label="Next month"
-          className="rounded-md p-2 text-slate-600 hover:bg-slate-100 disabled:opacity-30"
-        >
-          ›
-        </button>
+        <div className="flex gap-1.5">
+          <button
+            type="button"
+            onClick={() => shiftMonth(-1)}
+            disabled={!canGoBack}
+            aria-label="Previous month"
+            className={navButton}
+          >
+            ‹
+          </button>
+          <button
+            type="button"
+            onClick={() => shiftMonth(1)}
+            disabled={!canGoForward}
+            aria-label="Next month"
+            className={navButton}
+          >
+            ›
+          </button>
+        </div>
       </div>
-      <div role="grid" aria-label={label} className="grid grid-cols-7 gap-1 text-center text-sm">
-        {WEEKDAYS.map((day) => (
-          <div key={day} role="columnheader" className="py-1 text-xs font-medium text-slate-500">
+      <div
+        role="grid"
+        aria-label={label}
+        className="grid grid-cols-7 border-l border-t border-line bg-surface"
+      >
+        {WEEKDAYS.map((day, index) => (
+          <div
+            key={index}
+            role="columnheader"
+            className="border-b border-r border-line py-1.5 text-center font-mono text-2xs text-ink-muted"
+          >
             {day}
           </div>
         ))}
-        {cells.map((date, index) =>
-          date ? (
+        {cells.map((date, index) => {
+          if (!date) {
+            return (
+              <div
+                key={`blank-${index}`}
+                aria-hidden="true"
+                className="border-b border-r border-line bg-paper/60"
+              />
+            );
+          }
+          const disabled = date < today || date > lastDay;
+          const selected = date === value;
+          return (
             <button
               key={date}
               type="button"
               role="gridcell"
-              disabled={date < today || date > lastDay}
-              aria-selected={date === value}
+              disabled={disabled}
+              aria-selected={selected}
               aria-label={new Intl.DateTimeFormat('en-PH', {
                 weekday: 'long',
                 month: 'long',
@@ -96,21 +118,21 @@ export function DateCalendar({ value, onChange, today, maxDaysAhead = 60 }: Date
                 timeZone: 'UTC',
               }).format(new Date(`${date}T00:00:00Z`))}
               onClick={() => onChange(date)}
-              className={`rounded-lg py-2 font-medium transition disabled:cursor-not-allowed disabled:text-slate-300 ${
-                date === value
-                  ? 'bg-brand-600 text-white'
-                  : date === today
-                    ? 'text-brand-700 ring-1 ring-brand-300 hover:bg-brand-50'
-                    : 'text-slate-800 hover:bg-slate-100'
+              className={`relative aspect-square border-b border-r border-line text-left align-top font-mono text-[13px] transition-colors disabled:cursor-not-allowed disabled:bg-paper/60 disabled:text-ink-faint ${
+                selected ? 'bg-ink text-paper' : 'text-ink hover:bg-pine-50'
               }`}
             >
-              {Number(date.slice(8))}
+              <span className="absolute left-1.5 top-1">{Number(date.slice(8))}</span>
+              {date === today && !selected && (
+                <span className="absolute bottom-1.5 left-1.5 h-1 w-3 bg-marigold-400" aria-hidden="true" />
+              )}
             </button>
-          ) : (
-            <div key={`blank-${index}`} aria-hidden="true" />
-          ),
-        )}
+          );
+        })}
       </div>
+      <p className="mt-2 flex items-center gap-2 text-xs text-ink-muted">
+        <span className="h-1 w-3 bg-marigold-400" aria-hidden="true" /> Today
+      </p>
     </div>
   );
 }

@@ -5,11 +5,80 @@
 @layer base {
   html {
     -webkit-tap-highlight-color: transparent;
+    font-feature-settings: 'ss02';
+  }
+
+  body {
+    font-size: 15px;
+    line-height: 1.5;
   }
 
   :focus-visible {
-    outline: 2px solid #4f46e5;
+    outline: 2px solid #1f5c3e;
     outline-offset: 2px;
+  }
+
+  ::selection {
+    background: #fbefc8;
+    color: #17160f;
+  }
+
+  input[type='time'],
+  input[type='datetime-local'],
+  input[type='number'] {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-size: 14px;
+  }
+}
+
+@layer components {
+  /* Small uppercase label used for section headings and table captions. */
+  .eyebrow {
+    @apply font-mono text-2xs font-medium uppercase tracking-label text-ink-muted;
+  }
+
+  .num {
+    @apply font-mono tabular-nums;
+  }
+
+  /* A printed ticket stub: notched sides on the tear line. */
+  .ticket {
+    @apply relative border border-line-strong bg-surface;
+  }
+
+  .ticket-tear {
+    @apply relative border-t border-dashed border-line-strong;
+  }
+
+  .ticket-tear::before,
+  .ticket-tear::after {
+    content: '';
+    position: absolute;
+    top: -9px;
+    width: 18px;
+    height: 18px;
+    border-radius: 9999px;
+    background: #f6f4ee;
+    border: 1px solid #cdc7b6;
+  }
+
+  .ticket-tear::before {
+    left: -10px;
+    clip-path: inset(0 0 0 50%);
+  }
+
+  .ticket-tear::after {
+    right: -10px;
+    clip-path: inset(0 50% 0 0);
+  }
+
+  /* Dotted leader between a price-list item and its price. */
+  .leader {
+    @apply mx-2 flex-1 translate-y-[-4px] border-b border-dotted border-line-strong;
+  }
+
+  .hatched {
+    background-image: repeating-linear-gradient(135deg, transparent 0 6px, rgba(108, 104, 92, 0.12) 6px 7px);
   }
 }
 

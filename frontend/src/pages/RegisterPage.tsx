@@ -1,10 +1,11 @@
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { useState } from 'react';
 import { useAuth } from '@/auth/AuthContext';
-import { Button, Card, Field } from '@/components/ui';
+import { Button, Field } from '@/components/ui';
+import { AuthShell, FormError } from '@/components/AuthShell';
 import { ApiError } from '@/lib/api';
 
 const schema = z.object({
@@ -55,55 +56,65 @@ export function RegisterPage() {
   };
 
   return (
-    <div className="mx-auto max-w-md px-4 py-12">
-      <h1 className="text-2xl font-bold">Create your account</h1>
-      <p className="mt-1 text-sm text-slate-600">
-        Already registered?{' '}
-        <Link to="/login" className="font-medium text-brand-600 underline">
-          Sign in
-        </Link>
-      </p>
-      <Card className="mt-6">
-        <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
-          {formError && (
-            <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
-              {formError}
-            </p>
-          )}
-          <Field
-            label="Full name"
-            autoComplete="name"
-            {...register('fullName')}
-            error={errors.fullName?.message}
-          />
-          <Field
-            label="Email"
-            type="email"
-            autoComplete="email"
-            {...register('email')}
-            error={errors.email?.message}
-          />
-          <Field
-            label="Mobile number (optional)"
-            type="tel"
-            autoComplete="tel"
-            placeholder="0917 123 4567"
-            {...register('phone')}
-            error={errors.phone?.message}
-          />
-          <Field
-            label="Password"
-            type="password"
-            autoComplete="new-password"
-            hint="At least 10 characters with a letter and a number."
-            {...register('password')}
-            error={errors.password?.message}
-          />
-          <Button type="submit" className="w-full" loading={isSubmitting}>
-            Create account
-          </Button>
-        </form>
-      </Card>
-    </div>
+    <AuthShell
+      title="Create your account"
+      intro={
+        <>
+          Already have one?{' '}
+          <Link to="/login" className="font-medium text-ink underline underline-offset-4">
+            Sign in
+          </Link>
+        </>
+      }
+      aside={
+        <div className="text-sm text-ink-2">
+          <p className="eyebrow">What you get</p>
+          <ul className="mt-3 space-y-3">
+            <li>Book at any QueueUp business with the same account.</li>
+            <li>See, move or cancel your appointments in one list.</li>
+            <li>Email confirmations and a reminder the day before.</li>
+          </ul>
+          <p className="mt-6 text-ink-muted">
+            Running a business? Create an account first, then set up your shop from the dashboard.
+          </p>
+        </div>
+      }
+    >
+      <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-5">
+        <FormError message={formError} />
+        <Field
+          label="Full name"
+          autoComplete="name"
+          {...register('fullName')}
+          error={errors.fullName?.message}
+        />
+        <Field
+          label="Email"
+          type="email"
+          autoComplete="email"
+          {...register('email')}
+          error={errors.email?.message}
+        />
+        <Field
+          label="Mobile number (optional)"
+          type="tel"
+          autoComplete="tel"
+          placeholder="0917 123 4567"
+          {...register('phone')}
+          error={errors.phone?.message}
+        />
+        <Field
+          label="Password"
+          type="password"
+          autoComplete="new-password"
+          hint="At least 10 characters, with a letter and a number."
+          {...register('password')}
+          error={errors.password?.message}
+        />
+        <Button type="submit" size="lg" className="w-full" loading={isSubmitting}>
+          Create account
+        </Button>
+      </form>
+    </AuthShell>
   );
 }

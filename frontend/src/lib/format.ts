@@ -56,6 +56,18 @@ export function localDateOf(iso: string, timeZone: string): string {
   return `${get('year')}-${get('month')}-${get('day')}`;
 }
 
+/** Minutes since local midnight of an instant in the given time zone. */
+export function localMinutesOf(iso: string, timeZone: string): number {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone,
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(new Date(iso));
+  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value ?? 0);
+  return get('hour') * 60 + get('minute');
+}
+
 /** The local hour (0-23) of an instant in the given time zone. */
 export function localHourOf(iso: string, timeZone: string): number {
   return (

@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -5,7 +6,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { api, ApiError } from '@/lib/api';
 import { queryKeys } from '@/lib/queries';
 import type { TenantSettings } from '@/lib/types';
-import { Button, Card, Field, PageHeader } from '@/components/ui';
+import { Button, Field, PageHeader } from '@/components/ui';
 import { useToast } from '@/components/Toaster';
 import { useDashboard } from './DashboardLayout';
 
@@ -26,6 +27,27 @@ const schema = z
   });
 
 type SettingsForm = z.infer<typeof schema>;
+
+/** A settings group: explanation on the left, inputs on the right. */
+function Section({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="grid gap-5 border-b border-line py-8 first:pt-0 md:grid-cols-[260px,1fr] md:gap-10">
+      <div>
+        <h2 className="font-medium">{title}</h2>
+        <p className="mt-1 text-[13px] text-ink-muted">{description}</p>
+      </div>
+      <div className="max-w-xl space-y-5">{children}</div>
+    </section>
+  );
+}
 
 export default function SettingsPage() {
   const { slug, settings } = useDashboard();
@@ -69,17 +91,19 @@ export default function SettingsPage() {
     }
   };
 
+  const depositRequired = watch('depositRequired');
+
   return (
     <div>
-      <PageHeader
-        title="Settings"
-        description={`Booking page: /b/${slug} · Time zone: ${settings.timezone}`}
-      />
-      <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-6">
-        <Card>
-          <h2 className="mb-4 font-semibold">Business info</h2>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Business name" {...register('name')} error={errors.name?.message} />
+      <PageHeader eyebrow="Set up" title="Settings" description={<span className="num">/b/{slug}</span>} />
+      <form onSubmit={handleSubmit(onSubmit)} noValidate>
+        <Section
+          title="Business details"
+          description="Shown on your booking page and in every email customers receive."
+        >
+          <Field label="Business name" {...register('name')} error={errors.name?.message} />
+          <Field label="Address" {...register('address')} error={errors.address?.message} />
+          <div className="grid gap-5 sm:grid-cols-2">
             <Field
               label="Contact email"
               type="email"
@@ -92,51 +116,70 @@ export default function SettingsPage() {
               {...register('contactPhone')}
               error={errors.contactPhone?.message}
             />
-            <Field label="Address" {...register('address')} error={errors.address?.message} />
           </div>
-        </Card>
-        <Card>
-          <h2 className="mb-4 font-semibold">Booking rules</h2>
-          <div className="grid gap-4 sm:grid-cols-2">
+        </Section>
+
+        <Section
+          title="Booking rules"
+          description="Keep last-minute bookings and cancellations to a level the shop can handle."
+        >
+          <div className="grid gap-5 sm:grid-cols-2">
             <Field
-              label="Lead time (minutes)"
+              label="Minimum notice (minutes)"
               type="number"
-              hint="How soon before a slot customers can still book it."
+              hint="How far ahead customers must book."
               {...register('bookingLeadTimeMinutes')}
               error={errors.bookingLeadTimeMinutes?.message}
             />
             <Field
-              label="Cancellation window (hours)"
+              label="Free cancellation until (hours)"
               type="number"
-              hint="Customers can cancel or reschedule until this many hours before."
+              hint="Before the appointment. After that, only staff can cancel."
               {...register('cancellationWindowHours')}
               error={errors.cancellationWindowHours?.message}
             />
           </div>
-        </Card>
-        <Card>
-          <h2 className="mb-4 font-semibold">Deposits</h2>
-          <label className="flex items-center gap-2 text-sm font-medium">
+        </Section>
+
+        <Section
+          title="Deposits"
+          description="Ask for part of the price up front through PayMongo (GCash, Maya, cards). Unpaid holds are released after 15 minutes."
+        >
+          <label className="flex items-start gap-3 text-sm">
             <input
               type="checkbox"
-              className="h-4 w-4 rounded border-slate-300 text-brand-600"
+              className="mt-0.5 h-4 w-4 accent-[#1F5C3E]"
               {...register('depositRequired')}
             />
-            Require a deposit through PayMongo (GCash, Maya, card)
+            <span>
+              <span className="font-medium">Require a deposit to book</span>
+              <span className="block text-ink-muted">Customers pay before the booking is confirmed.</span>
+            </span>
           </label>
-          {watch('depositRequired') && (
+          {depositRequired && (
             <Field
-              className="mt-4 max-w-xs"
+              className="max-w-[200px]"
               label="Deposit (% of price)"
               type="number"
               {...register('depositPercent')}
               error={errors.depositPercent?.message}
             />
           )}
-        </Card>
-        <Button type="submit" loading={isSubmitting} disabled={!isDirty}>
-          Save settings
-        </Button>
+        </Section>
+
+        <div className="sticky bottom-0 -mx-4 flex items-center gap-3 border-t border-line bg-paper/95 px-4 py-4 backdrop-blur sm:-mx-8 sm:px-8">
+          <Button type="submit" loading={isSubmitting} disabled={!isDirty}>
+            Save changes
+          </Button>
+          {isDirty && (
+            <Button type="button" variant="ghost" onClick={() => reset()}>
+              Discard
+            </Button>
+          )}
+          <span className="text-[13px] text-ink-muted">
+            {isDirty ? 'You have unsaved changes.' : 'All changes saved.'}
+          </span>
+        </div>
       </form>
     </div>
   );

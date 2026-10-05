@@ -4,7 +4,7 @@ import { usePublicQueue, usePublicTenant } from '@/lib/queries';
 import { useLiveQueue } from '@/lib/useLiveQueue';
 import { ticketLabel } from '@/lib/format';
 
-/** Full-screen "Now Serving" board meant for a TV in the waiting area. Updates live over WebSocket. */
+/** Full-screen "Now Serving" board for a TV in the waiting area, in the style of a ticket machine display. */
 export default function DisplayBoard() {
   const { slug = '' } = useParams();
   const { data: tenant } = usePublicTenant(slug);
@@ -21,80 +21,116 @@ export default function DisplayBoard() {
   const serving = (state?.entries ?? [])
     .filter((e) => e.status === 'CALLED' || e.status === 'SERVING')
     .sort((a, b) => (b.calledAt ?? '').localeCompare(a.calledAt ?? ''));
-  const upNext = (state?.entries ?? []).filter((e) => e.status === 'WAITING').slice(0, 6);
+  const [latest, ...others] = serving;
+  const upNext = (state?.entries ?? []).filter((e) => e.status === 'WAITING').slice(0, 5);
   const timeZone = tenant?.timezone ?? 'Asia/Manila';
 
   return (
-    <div className="flex min-h-screen flex-col bg-slate-950 p-6 text-white sm:p-10">
-      <header className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold sm:text-4xl">{tenant?.name ?? 'QueueUp'}</h1>
-        <div className="text-right">
-          <p className="text-2xl font-semibold tabular-nums sm:text-4xl">
+    <div className="flex min-h-screen flex-col bg-[#0E0D0A] text-[#EDE9DF]">
+      <header className="flex items-center justify-between border-b border-white/10 px-[4vw] py-[2.5vh]">
+        <h1 className="text-[clamp(1.25rem,2.2vw,2.25rem)] font-semibold tracking-[-0.01em]">
+          {tenant?.name ?? 'QueueUp'}
+        </h1>
+        <div className="flex items-center gap-6">
+          <span
+            className={`flex items-center gap-2 font-mono text-sm ${connected ? 'text-[#8FC7A3]' : 'text-marigold-300'}`}
+          >
+            <span
+              aria-hidden="true"
+              className={`h-2 w-2 rounded-full ${connected ? 'bg-[#8FC7A3]' : 'bg-marigold-300'}`}
+            />
+            {connected ? 'LIVE' : 'RECONNECTING'}
+          </span>
+          <p className="font-mono text-[clamp(1.25rem,2.4vw,2.5rem)] tabular-nums">
             {new Intl.DateTimeFormat('en-PH', { timeZone, hour: 'numeric', minute: '2-digit' }).format(now)}
-          </p>
-          <p className={`text-sm ${connected ? 'text-emerald-400' : 'text-amber-400'}`}>
-            {connected ? '● Live' : '● Reconnecting'}
           </p>
         </div>
       </header>
 
-      <main className="mt-8 grid flex-1 gap-8 lg:grid-cols-3">
-        <section className="lg:col-span-2" aria-labelledby="serving-heading">
+      <main className="grid flex-1 lg:grid-cols-[1.6fr,1fr]">
+        <section
+          aria-labelledby="serving-heading"
+          className="flex flex-col border-white/10 px-[4vw] py-[4vh] lg:border-r"
+        >
           <h2
             id="serving-heading"
-            className="text-xl font-semibold uppercase tracking-widest text-emerald-400 sm:text-3xl"
+            className="font-mono text-[clamp(0.9rem,1.3vw,1.25rem)] uppercase tracking-[0.2em] text-white/50"
           >
             Now serving
           </h2>
-          <div className="mt-6 grid gap-6 sm:grid-cols-2" aria-live="polite">
-            {serving.length === 0 ? (
-              <p className="text-3xl text-slate-400">Please wait to be called</p>
+          <div aria-live="polite" className="flex flex-1 flex-col justify-center">
+            {latest ? (
+              <>
+                <p className="font-mono text-[clamp(6rem,17vw,16rem)] font-semibold leading-[0.9] tracking-[-0.04em] text-marigold-400 tabular-nums">
+                  {ticketLabel(latest.ticketNumber)}
+                </p>
+                <p className="mt-[2vh] text-[clamp(1.25rem,2.4vw,2.25rem)] text-white/80">
+                  {latest.status === 'CALLED' ? 'Please come to the counter' : 'Being served'}
+                  {latest.serviceName && <span className="text-white/40"> · {latest.serviceName}</span>}
+                </p>
+              </>
             ) : (
-              serving.map((entry, index) => (
-                <div
-                  key={entry.id}
-                  className={`overflow-hidden rounded-3xl px-4 py-8 text-center ${index === 0 ? 'bg-emerald-500 text-slate-950' : 'bg-slate-800'}`}
-                >
-                  <p className="text-[clamp(3rem,7vw,8rem)] font-black leading-none tabular-nums">
-                    {ticketLabel(entry.ticketNumber)}
-                  </p>
-                  <p className="mt-3 text-xl font-medium sm:text-2xl">
-                    {entry.status === 'CALLED' ? 'Please proceed to the counter' : 'Being served'}
-                  </p>
-                </div>
-              ))
+              <p className="text-[clamp(1.5rem,3vw,3rem)] text-white/50">Please wait for your number</p>
             )}
           </div>
+          {others.length > 0 && (
+            <div className="flex flex-wrap gap-x-[3vw] gap-y-2 border-t border-white/10 pt-[2.5vh]">
+              <span className="self-center font-mono text-sm uppercase tracking-[0.2em] text-white/40">
+                Also at counter
+              </span>
+              {others.map((entry) => (
+                <span
+                  key={entry.id}
+                  className="font-mono text-[clamp(1.75rem,3.5vw,3.5rem)] tabular-nums text-white/80"
+                >
+                  {ticketLabel(entry.ticketNumber)}
+                </span>
+              ))}
+            </div>
+          )}
         </section>
-        <section aria-labelledby="next-heading">
-          <h2
-            id="next-heading"
-            className="text-xl font-semibold uppercase tracking-widest text-slate-300 sm:text-3xl"
-          >
-            Up next
-          </h2>
-          <ol className="mt-6 space-y-3">
+
+        <section
+          aria-labelledby="next-heading"
+          className="border-t border-white/10 px-[4vw] py-[4vh] lg:border-t-0"
+        >
+          <div className="flex items-baseline justify-between">
+            <h2
+              id="next-heading"
+              className="font-mono text-[clamp(0.9rem,1.3vw,1.25rem)] uppercase tracking-[0.2em] text-white/50"
+            >
+              Up next
+            </h2>
+            <p className="font-mono text-white/40">{state?.waitingCount ?? 0} waiting</p>
+          </div>
+          <ol className="mt-[2vh]">
             {upNext.length === 0 ? (
-              <li className="text-2xl text-slate-500">No one waiting</li>
+              <li className="py-4 text-[clamp(1.25rem,2vw,2rem)] text-white/40">No one waiting</li>
             ) : (
-              upNext.map((entry) => (
+              upNext.map((entry, index) => (
                 <li
                   key={entry.id}
-                  className="flex items-center justify-between rounded-2xl bg-slate-800 px-6 py-4 text-[clamp(1.75rem,3vw,3rem)] font-bold tabular-nums"
+                  className="flex items-baseline justify-between gap-4 border-b border-white/10 py-[1.6vh]"
                 >
-                  <span>{ticketLabel(entry.ticketNumber)}</span>
-                  <span className="ml-4 text-right text-base font-medium text-slate-400 xl:text-xl">
+                  <span
+                    className={`font-mono text-[clamp(2rem,4.2vw,4.5rem)] font-medium tabular-nums ${
+                      index === 0 ? 'text-white' : 'text-white/60'
+                    }`}
+                  >
+                    {ticketLabel(entry.ticketNumber)}
+                  </span>
+                  <span className="truncate text-right text-[clamp(0.9rem,1.3vw,1.25rem)] text-white/40">
                     {entry.serviceName ?? ''}
                   </span>
                 </li>
               ))
             )}
           </ol>
-          <p className="mt-6 text-lg text-slate-400">{state?.waitingCount ?? 0} waiting</p>
         </section>
       </main>
-      <footer className="mt-8 text-center text-slate-500">
-        Join the queue from your phone at {window.location.host}/b/{slug}/queue
+
+      <footer className="border-t border-white/10 px-[4vw] py-[2vh] font-mono text-sm text-white/40">
+        Take a number on your phone: {window.location.host}/b/{slug}/queue
       </footer>
     </div>
   );

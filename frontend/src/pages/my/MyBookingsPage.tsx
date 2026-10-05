@@ -1,10 +1,10 @@
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import { BOOKING_STATUS_LABEL, formatDateTime, formatPeso } from '@/lib/format';
+import { formatDate, formatDateTime, formatPeso, formatTime } from '@/lib/format';
 import { queryKeys } from '@/lib/queries';
 import type { Booking, Page, PaymentIntent } from '@/lib/types';
-import { Badge, Button, Card, EmptyState, ErrorState, PageHeader, SkeletonList } from '@/components/ui';
+import { Badge, Button, EmptyState, ErrorState, PageHeader, SkeletonList } from '@/components/ui';
 import { useToast } from '@/components/Toaster';
 
 export function MyBookingsPage() {
@@ -21,47 +21,72 @@ export function MyBookingsPage() {
   const past = bookings.filter((b) => !isUpcoming(b));
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-10">
-      <PageHeader
-        title="My bookings"
-        description="Upcoming appointments and your history across every business."
-      />
+    <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
+      <PageHeader title="My bookings" description="Every appointment you've made, at every business." />
       {isLoading ? (
         <SkeletonList rows={3} />
       ) : error ? (
         <ErrorState error={error} onRetry={() => refetch()} />
       ) : (
         <>
-          <h2 className="text-lg font-semibold">Upcoming</h2>
-          <div className="mt-3 space-y-3">
+          <section aria-labelledby="upcoming-heading">
+            <h2 id="upcoming-heading" className="eyebrow">
+              Coming up
+            </h2>
             {upcoming.length === 0 ? (
-              <EmptyState title="No upcoming bookings">
-                <Link to="/b/kanto-cuts" className="font-medium text-brand-600 underline">
-                  Book something
-                </Link>
-              </EmptyState>
+              <div className="mt-3">
+                <EmptyState title="Nothing booked yet">
+                  <Link to="/b/kanto-cuts" className="font-medium text-ink underline underline-offset-4">
+                    Book a haircut at Kanto Cuts
+                  </Link>
+                </EmptyState>
+              </div>
             ) : (
-              upcoming.map((booking) => <BookingRow key={booking.id} booking={booking} upcoming />)
+              <ul className="mt-3 space-y-3">
+                {upcoming.map((booking) => (
+                  <UpcomingBooking key={booking.id} booking={booking} />
+                ))}
+              </ul>
             )}
-          </div>
-          <h2 className="mt-10 text-lg font-semibold">Past and cancelled</h2>
-          <div className="mt-3 space-y-3">
+          </section>
+
+          <section aria-labelledby="past-heading" className="mt-12">
+            <h2 id="past-heading" className="eyebrow">
+              History
+            </h2>
             {past.length === 0 ? (
-              <EmptyState title="Nothing here yet" />
+              <p className="mt-3 text-sm text-ink-muted">No past bookings.</p>
             ) : (
-              past.map((booking) => <BookingRow key={booking.id} booking={booking} upcoming={false} />)
+              <ul className="mt-3 divide-y divide-line border-y border-line">
+                {past.map((booking) => (
+                  <li
+                    key={booking.id}
+                    className="grid grid-cols-[1fr,auto] gap-x-4 gap-y-0.5 py-3 text-sm sm:grid-cols-[150px,1fr,auto]"
+                  >
+                    <span className="num text-ink-muted">
+                      {formatDate(booking.startsAt, booking.timezone)}
+                    </span>
+                    <span className="col-span-2 row-start-2 sm:col-span-1 sm:row-start-auto">
+                      {booking.serviceName} <span className="text-ink-muted">at {booking.tenantName}</span>
+                    </span>
+                    <span className="row-start-1 justify-self-end sm:row-start-auto">
+                      <Badge value={booking.status} />
+                    </span>
+                  </li>
+                ))}
+              </ul>
             )}
-          </div>
+          </section>
         </>
       )}
     </div>
   );
 }
 
-function BookingRow({ booking, upcoming }: { booking: Booking; upcoming: boolean }) {
+function UpcomingBooking({ booking }: { booking: Booking }) {
   const toast = useToast();
   const queryClient = useQueryClient();
-  const canChange = upcoming && new Date(booking.customerChangeDeadline).getTime() > Date.now();
+  const canChange = new Date(booking.customerChangeDeadline).getTime() > Date.now();
 
   const cancel = useMutation({
     mutationFn: () =>
@@ -83,36 +108,37 @@ function BookingRow({ booking, upcoming }: { booking: Booking; upcoming: boolean
   });
 
   return (
-    <Card>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <p className="font-semibold">
-            {booking.serviceName} <span className="font-normal text-slate-500">at</span> {booking.tenantName}
-          </p>
-          <p className="text-sm text-slate-600">
-            {formatDateTime(booking.startsAt, booking.timezone)} · {booking.staffName}
-          </p>
-          <p className="mt-1 text-sm text-slate-600">{formatPeso(booking.priceCentavos)}</p>
-          {booking.cancelledReason && (
-            <p className="mt-1 text-sm text-slate-500">{booking.cancelledReason}</p>
-          )}
-        </div>
-        <Badge value={booking.status} label={BOOKING_STATUS_LABEL[booking.status]} />
+    <li className="grid overflow-hidden rounded-md border border-line bg-surface sm:grid-cols-[132px,1fr]">
+      <div className="flex items-baseline gap-3 border-b border-line bg-paper/60 px-4 py-3 sm:block sm:border-b-0 sm:border-r">
+        <p className="text-[13px] text-ink-muted">{formatDate(booking.startsAt, booking.timezone)}</p>
+        <p className="num text-[22px] font-medium leading-tight sm:mt-1">
+          {formatTime(booking.startsAt, booking.timezone)}
+        </p>
       </div>
-      {upcoming && (
-        <div className="mt-4 flex flex-wrap gap-2">
+      <div className="px-4 py-3">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="font-medium">{booking.serviceName}</p>
+            <p className="text-sm text-ink-muted">
+              {booking.tenantName} · with {booking.staffName} ·{' '}
+              <span className="num">{formatPeso(booking.priceCentavos)}</span>
+            </p>
+          </div>
+          <Badge value={booking.status} />
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
           {booking.status === 'PENDING_PAYMENT' && (
             <Button size="sm" loading={pay.isPending} onClick={() => pay.mutate()}>
-              Pay deposit ({formatPeso(booking.depositCentavos)})
+              Pay {formatPeso(booking.depositCentavos)} deposit
             </Button>
           )}
           {canChange ? (
             <>
               <Link
                 to={`/b/${booking.tenantSlug}/book?service=${booking.serviceId}&reschedule=${booking.id}`}
-                className="rounded-lg bg-white px-2.5 py-1.5 text-sm font-semibold text-slate-800 ring-1 ring-inset ring-slate-300 hover:bg-slate-50"
+                className="inline-flex h-8 items-center rounded-md border border-line-strong bg-surface px-3 text-[13px] font-medium hover:border-ink-faint"
               >
-                Reschedule
+                Move
               </Link>
               <Button
                 size="sm"
@@ -132,13 +158,12 @@ function BookingRow({ booking, upcoming }: { booking: Booking; upcoming: boolean
               </Button>
             </>
           ) : (
-            <p className="text-sm text-slate-500">
-              Changes closed {formatDateTime(booking.customerChangeDeadline, booking.timezone)}. Contact the
-              business.
+            <p className="text-[13px] text-ink-muted">
+              Too close to change online. Call {booking.tenantName} instead.
             </p>
           )}
         </div>
-      )}
-    </Card>
+      </div>
+    </li>
   );
 }

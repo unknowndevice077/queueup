@@ -9,10 +9,15 @@ export default defineConfig({
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },
   server: {
-    port: 5173,
+    port: Number(process.env.PORT ?? 5173),
     proxy: {
-      '/api': 'http://localhost:8080',
-      '/ws': { target: 'ws://localhost:8080', ws: true },
+      // The dev proxy makes the API same-origin, so the browser's Origin header is dropped instead of
+      // tripping the backend's CORS allow-list (which lists the deployed frontend, not every dev port).
+      '/api': {
+        target: process.env.API_PROXY_TARGET ?? 'http://localhost:8080',
+        configure: (proxy) => proxy.on('proxyReq', (request) => request.removeHeader('origin')),
+      },
+      '/ws': { target: (process.env.API_PROXY_TARGET ?? 'http://localhost:8080').replace(/^http/, 'ws'), ws: true },
     },
   },
   build: {

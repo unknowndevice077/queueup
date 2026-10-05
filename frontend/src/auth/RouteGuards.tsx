@@ -31,12 +31,17 @@ export function RequireTenantRole({ roles, children }: { roles: TenantRole[]; ch
   const role = roleIn(slug);
   if (!role || !roles.includes(role)) {
     return (
-      <div role="alert" className="mx-auto max-w-md px-4 py-16 text-center">
-        <h1 className="text-xl font-semibold">You don&apos;t have access to this page</h1>
-        <p className="mt-2 text-slate-600">
+      <div role="alert" className="mx-auto max-w-xl px-4 py-24 sm:px-6">
+        <h1 className="text-[24px] font-semibold tracking-[-0.01em]">
+          You don&apos;t have access to this page
+        </h1>
+        <p className="mt-2 text-ink-2">
           {role ? 'This section is for business owners only.' : 'You are not a member of this business.'}
         </p>
-        <Link to={role ? `/dashboard/${slug}` : '/'} className="mt-6 inline-block text-brand-600 underline">
+        <Link
+          to={role ? `/dashboard/${slug}` : '/'}
+          className="mt-6 inline-block font-medium text-ink underline underline-offset-4"
+        >
           Go back
         </Link>
       </div>

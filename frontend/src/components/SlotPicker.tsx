@@ -23,12 +23,12 @@ export function SlotPicker({ availability, staffId, timeZone, selected, onSelect
   if (options.length === 0) {
     return (
       <EmptyState title="No open slots on this day">
-        Try another date or choose &quot;Any available&quot;.
+        Try another date, or let anyone available take you.
       </EmptyState>
     );
   }
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       {PERIODS.map((period) => {
         const slots = options.filter((o) => {
           const hour = localHourOf(o.start, timeZone);
@@ -39,8 +39,13 @@ export function SlotPicker({ availability, staffId, timeZone, selected, onSelect
         }
         return (
           <fieldset key={period.label}>
-            <legend className="mb-2 text-sm font-semibold text-slate-700">{period.label}</legend>
-            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
+            <legend className="eyebrow mb-2.5">
+              {period.label}
+              <span aria-hidden="true" className="ml-2 font-sans normal-case tracking-normal text-ink-faint">
+                {slots.length} open
+              </span>
+            </legend>
+            <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-5">
               {slots.map((slot) => {
                 const isSelected =
                   selected !== null && new Date(selected).getTime() === new Date(slot.start).getTime();
@@ -50,10 +55,10 @@ export function SlotPicker({ availability, staffId, timeZone, selected, onSelect
                     type="button"
                     aria-pressed={isSelected}
                     onClick={() => onSelect(slot.start, slot.staffId)}
-                    className={`rounded-lg px-2 py-2.5 text-sm font-medium ring-1 ring-inset transition ${
+                    className={`h-10 rounded-md border font-mono text-[13px] transition-colors ${
                       isSelected
-                        ? 'bg-brand-600 text-white ring-brand-600'
-                        : 'bg-white text-slate-800 ring-slate-300 hover:ring-brand-500'
+                        ? 'border-ink bg-ink text-paper'
+                        : 'border-line-strong bg-surface text-ink hover:border-pine-600 hover:bg-pine-50'
                     }`}
                   >
                     {formatTime(slot.start, timeZone)}

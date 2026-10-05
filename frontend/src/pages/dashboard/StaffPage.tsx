@@ -3,11 +3,25 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { queryKeys } from '@/lib/queries';
 import type { Service, StaffMember, WorkingHoursRange } from '@/lib/types';
-import { Badge, Button, Card, ErrorState, Field, PageHeader, SkeletonList } from '@/components/ui';
+import { Badge, Button, ErrorState, Field, PageHeader, SkeletonList } from '@/components/ui';
 import { useToast } from '@/components/Toaster';
 import { useDashboard } from './DashboardLayout';
 
-const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+function shortTime(time: string) {
+  const [h, m] = time.split(':').map(Number);
+  return `${h % 12 || 12}${m ? `:${String(m).padStart(2, '0')}` : ''}${h < 12 ? 'a' : 'p'}`;
+}
+
+/** ["9a–12p", "1p–7p"] for a day, used in the compact weekly summary. */
+function dayRanges(hours: WorkingHoursRange[], day: number) {
+  return hours
+    .filter((h) => h.dayOfWeek === day)
+    .sort((a, b) => a.startTime.localeCompare(b.startTime))
+    .map((r) => `${shortTime(r.startTime)}–${shortTime(r.endTime)}`);
+}
 
 export default function StaffPage() {
   const { slug } = useDashboard();
@@ -29,7 +43,7 @@ export default function StaffPage() {
   const invite = useMutation({
     mutationFn: (email: string) => api.post<StaffMember>(`/api/t/${slug}/staff`, { email }),
     onSuccess: (member) => {
-      toast.success(`${member.fullName} added as staff.`);
+      toast.success(`${member.fullName} joined the team.`);
       setInviteEmail('');
       setExpanded(member.id);
       return refresh();
@@ -44,81 +58,123 @@ export default function StaffPage() {
     onError: (e) => toast.error(e),
   });
 
+  const serviceName = (id: string) => services.data?.find((s) => s.id === id)?.name;
+
   return (
     <div>
-      <PageHeader title="Staff" description="Who works here, what they do and when they work." />
-      <Card className="mb-6">
-        <form
-          className="flex flex-col gap-3 sm:flex-row sm:items-end"
-          onSubmit={(event) => {
-            event.preventDefault();
-            if (inviteEmail.trim()) {
-              invite.mutate(inviteEmail.trim());
-            }
-          }}
-        >
-          <Field
-            label="Add a team member by email"
-            name="invite-email"
-            type="email"
-            value={inviteEmail}
-            onChange={(event) => setInviteEmail(event.target.value)}
-            hint="They need a QueueUp account first."
-            className="flex-1"
-          />
-          <Button type="submit" loading={invite.isPending}>
-            Add staff
-          </Button>
-        </form>
-      </Card>
+      <PageHeader
+        eyebrow="Set up"
+        title="Staff & hours"
+        description="Who works here, what they do, and when they're in."
+      />
+
+      <form
+        className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (inviteEmail.trim()) {
+            invite.mutate(inviteEmail.trim());
+          }
+        }}
+      >
+        <Field
+          label="Add someone by email"
+          name="invite-email"
+          type="email"
+          placeholder="name@example.com"
+          value={inviteEmail}
+          onChange={(event) => setInviteEmail(event.target.value)}
+          hint="They need to create a QueueUp account first."
+          className="flex-1 sm:max-w-sm"
+        />
+        <Button type="submit" variant="ink" loading={invite.isPending} className="sm:mb-[26px]">
+          Add to team
+        </Button>
+      </form>
+
       {staff.isLoading || services.isLoading ? (
         <SkeletonList rows={3} />
       ) : staff.error ? (
         <ErrorState error={staff.error} onRetry={() => staff.refetch()} />
       ) : (
-        <ul className="space-y-3">
+        <ul className="divide-y divide-line rounded-lg border border-line bg-surface">
           {staff.data!.map((member) => (
-            <li key={member.id}>
-              <Card className={member.active ? '' : 'opacity-60'}>
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <p className="font-semibold">
-                      {member.fullName} <Badge value={member.role} />{' '}
-                      {!member.active && <Badge value="CANCELLED" label="removed" />}
-                    </p>
-                    <p className="text-sm text-slate-500">{member.email}</p>
+            <li key={member.id} className={member.active ? '' : 'bg-paper/60'}>
+              <div className="grid gap-4 px-5 py-4 lg:grid-cols-[200px,minmax(0,1fr),auto] lg:items-start">
+                <div>
+                  <p className={`font-medium ${member.active ? '' : 'text-ink-muted line-through'}`}>
+                    {member.fullName}
+                  </p>
+                  <p className="truncate text-[13px] text-ink-muted">{member.email}</p>
+                  <div className="mt-1">
+                    <Badge
+                      value={member.role}
+                      label={member.active ? (member.role === 'OWNER' ? 'Owner' : 'Staff') : 'Removed'}
+                    />
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      aria-expanded={expanded === member.id}
-                      onClick={() => setExpanded(expanded === member.id ? null : member.id)}
-                    >
-                      {expanded === member.id ? 'Close' : 'Services & hours'}
-                    </Button>
-                    {member.active && member.role === 'STAFF' && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => update.mutate({ id: member.id, body: { role: 'OWNER' } })}
-                      >
-                        Make owner
-                      </Button>
-                    )}
+                </div>
+                <div className="min-w-0 text-[13px]">
+                  <div className="grid max-w-[560px] grid-cols-7 gap-px overflow-hidden rounded border border-line bg-line">
+                    {DAYS.map((day, index) => {
+                      const ranges = dayRanges(member.workingHours, index + 1);
+                      return (
+                        <div
+                          key={day}
+                          className={`px-1.5 py-1.5 ${ranges.length ? 'bg-surface' : 'hatched bg-paper'}`}
+                        >
+                          <p className="font-mono text-2xs text-ink-muted">{day}</p>
+                          {ranges.length === 0 ? (
+                            <p className="num text-[11px] leading-tight text-ink-faint">off</p>
+                          ) : (
+                            ranges.map((range) => (
+                              <p
+                                key={range}
+                                className="num whitespace-nowrap text-[11px] leading-tight text-ink-2"
+                              >
+                                {range}
+                              </p>
+                            ))
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <p className="mt-2 truncate text-ink-muted">
+                    {member.serviceIds.length === 0
+                      ? 'No services assigned, so customers cannot book them.'
+                      : member.serviceIds.map(serviceName).filter(Boolean).join(' · ')}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-1.5 lg:flex-nowrap lg:justify-end">
+                  <Button
+                    size="sm"
+                    variant={expanded === member.id ? 'ink' : 'secondary'}
+                    aria-expanded={expanded === member.id}
+                    onClick={() => setExpanded(expanded === member.id ? null : member.id)}
+                  >
+                    {expanded === member.id ? 'Close' : 'Edit hours'}
+                  </Button>
+                  {member.active && member.role === 'STAFF' && (
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => update.mutate({ id: member.id, body: { active: !member.active } })}
+                      onClick={() => update.mutate({ id: member.id, body: { role: 'OWNER' } })}
                     >
-                      {member.active ? 'Remove' : 'Restore'}
+                      Make owner
                     </Button>
-                  </div>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => update.mutate({ id: member.id, body: { active: !member.active } })}
+                  >
+                    {member.active ? 'Remove' : 'Restore'}
+                  </Button>
                 </div>
-                {expanded === member.id && (
-                  <StaffEditor slug={slug} member={member} services={services.data ?? []} onSaved={refresh} />
-                )}
-              </Card>
+              </div>
+              {expanded === member.id && (
+                <StaffEditor slug={slug} member={member} services={services.data ?? []} onSaved={refresh} />
+              )}
             </li>
           ))}
         </ul>
@@ -154,7 +210,7 @@ function StaffEditor({
     try {
       await api.put(`/api/t/${slug}/staff/${member.id}/services`, { serviceIds });
       await api.put(`/api/t/${slug}/staff/${member.id}/working-hours`, { ranges: hours });
-      toast.success(`Saved ${member.fullName}'s services and schedule.`);
+      toast.success(`Saved ${member.fullName}'s services and hours.`);
       onSaved();
     } catch (e) {
       toast.error(e);
@@ -166,18 +222,29 @@ function StaffEditor({
   const setRange = (index: number, patch: Partial<WorkingHoursRange>) =>
     setHours((current) => current.map((h, i) => (i === index ? { ...h, ...patch } : h)));
 
+  const copyMondayToWeekdays = () => {
+    const monday = hours.filter((h) => h.dayOfWeek === 1);
+    setHours((current) => [
+      ...current.filter((h) => h.dayOfWeek === 1 || h.dayOfWeek > 5),
+      ...[2, 3, 4, 5].flatMap((day) => monday.map((h) => ({ ...h, dayOfWeek: day }))),
+    ]);
+  };
+
+  const timeInput =
+    'h-8 rounded border border-line-strong bg-surface px-1.5 text-[13px] focus:border-pine-600 focus:outline-none';
+
   return (
-    <div className="mt-5 grid gap-6 border-t border-slate-100 pt-5 lg:grid-cols-[1fr,2fr]">
+    <div className="grid gap-8 border-t border-line bg-paper/50 px-5 py-5 lg:grid-cols-[220px,1fr]">
       <fieldset>
-        <legend className="mb-2 text-sm font-semibold">Services</legend>
+        <legend className="eyebrow mb-3">Does these services</legend>
         <div className="space-y-2">
           {services
             .filter((s) => s.active)
             .map((service) => (
-              <label key={service.id} className="flex items-center gap-2 text-sm">
+              <label key={service.id} className="flex items-center gap-2.5 text-sm">
                 <input
                   type="checkbox"
-                  className="h-4 w-4 rounded border-slate-300 text-brand-600"
+                  className="h-4 w-4 rounded-sm border-line-strong accent-[#1F5C3E]"
                   checked={serviceIds.includes(service.id)}
                   onChange={(event) =>
                     setServiceIds((ids) =>
@@ -190,74 +257,96 @@ function StaffEditor({
             ))}
         </div>
       </fieldset>
+
       <fieldset>
-        <legend className="mb-2 text-sm font-semibold">Weekly schedule</legend>
-        <p className="mb-3 text-xs text-slate-500">Add two ranges on a day to model a lunch break.</p>
-        <div className="space-y-3">
-          {DAYS.map((dayName, dayIndex) => {
-            const day = dayIndex + 1;
-            const ranges = hours.map((h, i) => ({ h, i })).filter(({ h }) => h.dayOfWeek === day);
-            return (
-              <div key={day} className="flex flex-col gap-2 sm:flex-row sm:items-start">
-                <span className="w-28 pt-1.5 text-sm font-medium">{dayName}</span>
-                <div className="flex flex-1 flex-col gap-2">
-                  {ranges.length === 0 && <span className="pt-1.5 text-sm text-slate-400">Day off</span>}
-                  {ranges.map(({ h, i }) => (
-                    <div key={i} className="flex items-center gap-2">
-                      <label className="sr-only" htmlFor={`start-${member.id}-${i}`}>
-                        {dayName} start
-                      </label>
-                      <input
-                        id={`start-${member.id}-${i}`}
-                        type="time"
-                        value={h.startTime}
-                        onChange={(event) => setRange(i, { startTime: event.target.value })}
-                        className="rounded-md border border-slate-300 px-2 py-1 text-sm"
-                      />
-                      <span aria-hidden="true">–</span>
-                      <label className="sr-only" htmlFor={`end-${member.id}-${i}`}>
-                        {dayName} end
-                      </label>
-                      <input
-                        id={`end-${member.id}-${i}`}
-                        type="time"
-                        value={h.endTime}
-                        onChange={(event) => setRange(i, { endTime: event.target.value })}
-                        className="rounded-md border border-slate-300 px-2 py-1 text-sm"
-                      />
-                      <button
-                        type="button"
-                        aria-label={`Remove ${dayName} range`}
-                        onClick={() => setHours((current) => current.filter((_, j) => j !== i))}
-                        className="rounded px-2 py-1 text-slate-500 hover:bg-slate-100"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ))}
-                </div>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setHours((current) => [
-                      ...current,
-                      ranges.length === 0
-                        ? { dayOfWeek: day, startTime: '09:00', endTime: '12:00' }
-                        : { dayOfWeek: day, startTime: '13:00', endTime: '18:00' },
-                    ])
-                  }
-                  className="self-start rounded px-2 py-1 text-sm font-medium text-brand-600 hover:bg-brand-50"
-                >
-                  + Add range
-                </button>
-              </div>
-            );
-          })}
+        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+          <legend className="eyebrow">Weekly hours</legend>
+          <button
+            type="button"
+            onClick={copyMondayToWeekdays}
+            className="text-[13px] text-ink-muted underline underline-offset-2 hover:text-ink"
+          >
+            Copy Monday to Tue–Fri
+          </button>
         </div>
+        <table className="w-full text-sm">
+          <tbody className="divide-y divide-line border-y border-line">
+            {DAY_NAMES.map((dayName, dayIndex) => {
+              const day = dayIndex + 1;
+              const ranges = hours.map((h, i) => ({ h, i })).filter(({ h }) => h.dayOfWeek === day);
+              return (
+                <tr key={day}>
+                  <th scope="row" className="w-28 py-2 pr-3 text-left align-top font-normal text-ink-2">
+                    {dayName}
+                  </th>
+                  <td className="py-2">
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                      {ranges.length === 0 && <span className="text-ink-faint">Day off</span>}
+                      {ranges.map(({ h, i }) => (
+                        <span key={i} className="inline-flex items-center gap-1.5">
+                          <label className="sr-only" htmlFor={`start-${member.id}-${i}`}>
+                            {dayName} start
+                          </label>
+                          <input
+                            id={`start-${member.id}-${i}`}
+                            type="time"
+                            step={900}
+                            value={h.startTime}
+                            onChange={(event) => setRange(i, { startTime: event.target.value })}
+                            className={timeInput}
+                          />
+                          <span aria-hidden="true" className="text-ink-faint">
+                            –
+                          </span>
+                          <label className="sr-only" htmlFor={`end-${member.id}-${i}`}>
+                            {dayName} end
+                          </label>
+                          <input
+                            id={`end-${member.id}-${i}`}
+                            type="time"
+                            step={900}
+                            value={h.endTime}
+                            onChange={(event) => setRange(i, { endTime: event.target.value })}
+                            className={timeInput}
+                          />
+                          <button
+                            type="button"
+                            aria-label={`Remove ${dayName} ${h.startTime} to ${h.endTime}`}
+                            onClick={() => setHours((current) => current.filter((_, j) => j !== i))}
+                            className="px-1 text-ink-faint hover:text-brick-600"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  </td>
+                  <td className="w-24 py-2 text-right align-top">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setHours((current) => [
+                          ...current,
+                          ranges.length === 0
+                            ? { dayOfWeek: day, startTime: '09:00', endTime: '12:00' }
+                            : { dayOfWeek: day, startTime: '13:00', endTime: '18:00' },
+                        ])
+                      }
+                      className="text-[13px] text-pine-600 hover:underline hover:underline-offset-2"
+                    >
+                      {ranges.length === 0 ? '+ Add hours' : '+ After break'}
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </fieldset>
-      <div className="lg:col-span-2">
+
+      <div className="flex gap-2 lg:col-span-2">
         <Button onClick={save} loading={saving}>
-          Save services and schedule
+          Save {member.fullName.split(' ')[0]}&apos;s schedule
         </Button>
       </div>
     </div>

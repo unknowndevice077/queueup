@@ -7,9 +7,9 @@ import { useQueryClient } from '@tanstack/react-query';
 import { api, ApiError } from '@/lib/api';
 import { queryKeys, usePublicQueue, usePublicTenant } from '@/lib/queries';
 import { useLiveQueue } from '@/lib/useLiveQueue';
-import { ticketLabel, todayIn } from '@/lib/format';
+import { formatTime, ticketLabel, todayIn } from '@/lib/format';
 import type { PublicQueueState, QueueTicket } from '@/lib/types';
-import { Badge, Button, Card, ErrorState, Field, SkeletonList } from '@/components/ui';
+import { Button, ErrorState, Field, Select, SkeletonList } from '@/components/ui';
 import { useToast } from '@/components/Toaster';
 
 const schema = z.object({
@@ -52,35 +52,56 @@ export function QueuePage() {
 
   if (isLoading || !tenant) {
     return (
-      <div className="mx-auto max-w-lg px-4 py-10">
+      <div className="mx-auto max-w-md px-4 py-12">
         <SkeletonList rows={3} />
       </div>
     );
   }
   if (error) {
     return (
-      <div className="mx-auto max-w-lg px-4 py-10">
+      <div className="mx-auto max-w-md px-4 py-12">
         <ErrorState error={error} onRetry={() => refetch()} />
       </div>
     );
   }
 
+  const nowServing = (state?.entries ?? []).filter((e) => e.status === 'CALLED' || e.status === 'SERVING');
+
   return (
-    <div className="mx-auto max-w-lg px-4 py-10">
-      <Link to={`/b/${slug}`} className="text-sm text-brand-600 underline">
+    <div className="mx-auto max-w-md px-4 py-10 sm:py-14">
+      <Link to={`/b/${slug}`} className="text-sm text-ink-muted hover:text-ink">
         ← {tenant.name}
       </Link>
-      <h1 className="mt-2 text-2xl font-bold">Walk-in queue</h1>
-      <p className="mt-1 text-sm text-slate-600" aria-live="polite">
-        {state?.waitingCount ?? 0} waiting now{' '}
-        <span className={connected ? 'text-emerald-600' : 'text-slate-400'}>
-          · {connected ? 'live' : 'connecting'}
-        </span>
+      <h1 className="mt-3 text-[28px] font-semibold tracking-[-0.015em]">Walk-in queue</h1>
+
+      <div className="mt-5 grid grid-cols-2 divide-x divide-line rounded-md border border-line bg-surface">
+        <div className="px-4 py-3">
+          <p className="eyebrow">Waiting</p>
+          <p className="num mt-1 text-2xl font-medium" aria-live="polite">
+            {state?.waitingCount ?? 0}
+          </p>
+        </div>
+        <div className="px-4 py-3">
+          <p className="eyebrow">At the counter</p>
+          <p className="num mt-1 text-2xl font-medium">
+            {nowServing.length === 0 ? '—' : nowServing.map((e) => ticketLabel(e.ticketNumber)).join(' ')}
+          </p>
+        </div>
+      </div>
+      <p className="mt-2 flex items-center gap-1.5 text-xs text-ink-muted">
+        <span
+          aria-hidden="true"
+          className={`h-1.5 w-1.5 rounded-full ${connected ? 'bg-pine-500' : 'bg-ink-faint'}`}
+        />
+        {connected ? 'Live. Updates as staff call tickets.' : 'Connecting…'}
       </p>
+
       {ticket ? (
         <TicketCard
           ticket={ticket}
           state={state}
+          businessName={tenant.name}
+          timeZone={tenant.timezone}
           onLeave={() => {
             localStorage.removeItem(storageKey(slug));
             setTicket(null);
@@ -138,87 +159,99 @@ function JoinQueueForm({
   };
 
   return (
-    <Card className="mt-6">
-      <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
-        <Field
-          label="Your name"
-          autoComplete="given-name"
-          {...register('customerName')}
-          error={errors.customerName?.message}
-        />
-        <Field
-          label="Mobile number"
-          type="tel"
-          autoComplete="tel"
-          hint="Only staff can see this, in case they need to reach you."
-          {...register('customerPhone')}
-          error={errors.customerPhone?.message}
-        />
-        <div>
-          <label htmlFor="serviceId" className="block text-sm font-medium text-slate-700">
-            Service (optional)
-          </label>
-          <select
-            id="serviceId"
-            {...register('serviceId')}
-            className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-          >
-            <option value="">Not sure yet</option>
-            {services.map((service) => (
-              <option key={service.id} value={service.id}>
-                {service.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <Button type="submit" size="lg" className="w-full" loading={isSubmitting}>
-          Get a ticket
-        </Button>
-      </form>
-    </Card>
+    <form onSubmit={handleSubmit(onSubmit)} noValidate className="mt-8 space-y-5 border-t border-line pt-6">
+      <p className="text-sm text-ink-2">
+        No account needed. We&apos;ll show your place in line on this page.
+      </p>
+      <Field
+        label="Your name"
+        autoComplete="given-name"
+        {...register('customerName')}
+        error={errors.customerName?.message}
+      />
+      <Field
+        label="Mobile number"
+        type="tel"
+        autoComplete="tel"
+        hint="Only staff see this, in case they need to call you back in."
+        {...register('customerPhone')}
+        error={errors.customerPhone?.message}
+      />
+      <Select label="Service (optional)" {...register('serviceId')}>
+        <option value="">Not sure yet</option>
+        {services.map((service) => (
+          <option key={service.id} value={service.id}>
+            {service.name}
+          </option>
+        ))}
+      </Select>
+      <Button type="submit" size="lg" className="w-full" loading={isSubmitting}>
+        Take a number
+      </Button>
+    </form>
   );
 }
 
 function TicketCard({
   ticket,
   state,
+  businessName,
+  timeZone,
   onLeave,
 }: {
   ticket: QueueTicket;
   state: PublicQueueState | undefined;
+  businessName: string;
+  timeZone: string;
   onLeave(): void;
 }) {
   const live = state?.entries.find((e) => e.id === ticket.id);
   const status = live?.status ?? ticket.status;
   const position = live?.position ?? ticket.position;
   const yourTurn = status === 'CALLED' || status === 'SERVING';
+  const ahead = Math.max(position - 1, 0);
+
+  const message = yourTurn
+    ? 'Please go to the counter.'
+    : status === 'WAITING'
+      ? ahead === 0
+        ? "You're next."
+        : `${ahead} ${ahead === 1 ? 'person' : 'people'} ahead of you`
+      : status === 'DONE'
+        ? 'Thanks for coming in.'
+        : 'Your number was skipped. Please ask at the counter.';
 
   return (
-    <Card className={`mt-6 text-center ${yourTurn ? 'ring-2 ring-emerald-500' : ''}`}>
-      <p className="text-sm font-medium text-slate-500">Your ticket</p>
-      <p className="mt-1 text-6xl font-extrabold tracking-tight text-brand-700">
-        {ticketLabel(ticket.ticketNumber)}
-      </p>
-      <div className="mt-3">
-        <Badge value={status} />
+    <div className="mt-8">
+      <div className={`ticket rounded-md ${yourTurn ? 'border-marigold-400' : ''}`}>
+        <div className="px-6 pb-5 pt-5">
+          <div className="flex items-baseline justify-between">
+            <p className="eyebrow">{businessName}</p>
+            <p className="num text-xs text-ink-muted">{formatTime(ticket.joinedAt, timeZone)}</p>
+          </div>
+          <p className="num mt-4 text-[72px] font-semibold leading-none tracking-[-0.03em]">
+            {ticketLabel(ticket.ticketNumber)}
+          </p>
+          <p className="mt-2 text-sm text-ink-muted">
+            {ticket.customerName}
+            {ticket.serviceName && <> · {ticket.serviceName}</>}
+          </p>
+        </div>
+        <div className="ticket-tear" />
+        <div className={`px-6 py-4 ${yourTurn ? 'bg-marigold-100' : ''}`}>
+          <p className="text-lg font-medium" aria-live="assertive">
+            {message}
+          </p>
+          {status === 'WAITING' && (
+            <p className="mt-1 text-[13px] text-ink-muted">Keep this page open. It updates by itself.</p>
+          )}
+        </div>
       </div>
-      <p className="mt-4 text-lg font-semibold" aria-live="assertive">
-        {yourTurn
-          ? "It's your turn! Please proceed to the counter."
-          : status === 'WAITING'
-            ? position <= 1
-              ? "You're next."
-              : `${position - 1} ${position - 1 === 1 ? 'person' : 'people'} ahead of you`
-            : status === 'DONE'
-              ? 'Thanks for visiting!'
-              : 'Your ticket was skipped. Please ask the staff.'}
-      </p>
-      <p className="mt-2 text-sm text-slate-500">Keep this page open. It updates automatically.</p>
       {(status === 'DONE' || status === 'SKIPPED') && (
         <Button variant="secondary" className="mt-4" onClick={onLeave}>
-          Get a new ticket
+          Take a new number
         </Button>
       )}
-    </Card>
+    </div>
   );
 }

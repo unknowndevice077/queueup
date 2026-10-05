@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactElement } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import {
@@ -11,21 +11,32 @@ import {
   Tooltip,
   XAxis,
   YAxis,
+  type TooltipProps,
 } from 'recharts';
 import { api } from '@/lib/api';
-import { addDays, formatPeso, formatTime, todayIn } from '@/lib/format';
+import { addDays, formatLocalDate, formatPeso, formatTime, ticketLabel, todayIn } from '@/lib/format';
 import { downloadFile } from '@/lib/download';
 import { queryKeys } from '@/lib/queries';
 import type { AnalyticsSummary, Booking, Page, StaffQueueEntry } from '@/lib/types';
-import { Badge, Button, Card, EmptyState, ErrorState, PageHeader, Skeleton } from '@/components/ui';
+import {
+  Badge,
+  Button,
+  EmptyState,
+  ErrorState,
+  PageHeader,
+  Segmented,
+  Skeleton,
+  StatStrip,
+} from '@/components/ui';
 import { useToast } from '@/components/Toaster';
 import { useDashboard } from './DashboardLayout';
 
-const RANGES = [
-  { label: '7 days', days: 7 },
-  { label: '30 days', days: 30 },
-  { label: '60 days', days: 60 },
-];
+const INK = '#17160F';
+const PINE = '#1F5C3E';
+const MARIGOLD = '#F2BC1F';
+const LINE = '#E4E0D5';
+const MUTED = '#6C685C';
+const AXIS = { fontSize: 11, fill: MUTED, fontFamily: 'IBM Plex Mono, monospace' };
 
 export default function OverviewPage() {
   const { slug, role, settings } = useDashboard();
@@ -41,84 +52,131 @@ export default function OverviewPage() {
   });
 
   const active = (todaysBookings.data?.content ?? []).filter((b) => b.status !== 'CANCELLED');
-  const waiting = (queue.data ?? []).filter((e) => e.status === 'WAITING').length;
+  const waiting = (queue.data ?? []).filter((e) => e.status === 'WAITING');
+  const atCounter = (queue.data ?? []).filter((e) => e.status === 'CALLED' || e.status === 'SERVING');
+  const next = active.find((b) => new Date(b.startsAt).getTime() > Date.now() && b.status === 'CONFIRMED');
+  const loading = todaysBookings.isLoading || queue.isLoading;
 
   return (
     <div>
-      <PageHeader title={settings.name} description={`Today is ${today} (${settings.timezone})`} />
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Kpi label="Bookings today" value={todaysBookings.isLoading ? null : String(active.length)} />
-        <Kpi label="Waiting in queue" value={queue.isLoading ? null : String(waiting)} />
-        <Kpi
-          label="Next appointment"
-          value={
-            todaysBookings.isLoading
-              ? null
-              : (() => {
-                  const next = active.find((b) => new Date(b.startsAt).getTime() > Date.now());
-                  return next ? formatTime(next.startsAt, settings.timezone) : 'None';
-                })()
-          }
-        />
-        <Kpi
-          label="Completed today"
-          value={
-            todaysBookings.isLoading ? null : String(active.filter((b) => b.status === 'COMPLETED').length)
-          }
-        />
+      <PageHeader eyebrow={settings.name} title={formatLocalDate(today)} />
+
+      <StatStrip
+        items={[
+          { label: 'Appointments today', value: loading ? <Skeleton className="h-6 w-10" /> : active.length },
+          {
+            label: 'Next appointment',
+            value: loading ? (
+              <Skeleton className="h-6 w-16" />
+            ) : next ? (
+              formatTime(next.startsAt, settings.timezone)
+            ) : (
+              '—'
+            ),
+            note: next ? `${next.customerName} · ${next.serviceName}` : undefined,
+          },
+          { label: 'Walk-ins waiting', value: loading ? <Skeleton className="h-6 w-10" /> : waiting.length },
+          {
+            label: 'Done today',
+            value: loading ? (
+              <Skeleton className="h-6 w-10" />
+            ) : (
+              active.filter((b) => b.status === 'COMPLETED').length
+            ),
+          },
+        ]}
+      />
+
+      <div className="mt-8 grid gap-8 xl:grid-cols-[1fr,300px]">
+        <section aria-labelledby="today-heading">
+          <div className="mb-3 flex items-baseline justify-between">
+            <h2 id="today-heading" className="eyebrow">
+              Today&apos;s appointments
+            </h2>
+            <Link
+              to="calendar"
+              className="text-[13px] text-ink-muted underline-offset-2 hover:text-ink hover:underline"
+            >
+              Open calendar →
+            </Link>
+          </div>
+          {todaysBookings.isLoading ? (
+            <Skeleton className="h-40 w-full" />
+          ) : todaysBookings.error ? (
+            <ErrorState error={todaysBookings.error} />
+          ) : active.length === 0 ? (
+            <EmptyState title="No appointments today" />
+          ) : (
+            <div className="overflow-x-auto rounded-lg border border-line bg-surface">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-line text-left">
+                    <th className="eyebrow w-20 px-4 py-2.5 font-medium">Time</th>
+                    <th className="eyebrow px-4 py-2.5 font-medium">Customer</th>
+                    <th className="eyebrow hidden px-4 py-2.5 font-medium sm:table-cell">With</th>
+                    <th className="eyebrow px-4 py-2.5 text-right font-medium">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-line">
+                  {active.map((booking) => (
+                    <tr key={booking.id} className={booking.status === 'COMPLETED' ? 'text-ink-muted' : ''}>
+                      <td className="num whitespace-nowrap px-4 py-2.5">
+                        {formatTime(booking.startsAt, settings.timezone)}
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <span className="font-medium text-ink">{booking.customerName}</span>
+                        <span className="block text-[13px] text-ink-muted">{booking.serviceName}</span>
+                      </td>
+                      <td className="hidden px-4 py-2.5 text-ink-2 sm:table-cell">{booking.staffName}</td>
+                      <td className="px-4 py-2.5 text-right">
+                        <Badge value={booking.status} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+
+        <section aria-labelledby="queue-heading">
+          <div className="mb-3 flex items-baseline justify-between">
+            <h2 id="queue-heading" className="eyebrow">
+              Walk-ins right now
+            </h2>
+            <Link
+              to="queue"
+              className="text-[13px] text-ink-muted underline-offset-2 hover:text-ink hover:underline"
+            >
+              Console →
+            </Link>
+          </div>
+          <div className="rounded-lg border border-line bg-surface">
+            <div className="border-b border-line px-4 py-3">
+              <p className="text-xs text-ink-muted">At the counter</p>
+              <p className="num mt-1 text-lg">
+                {atCounter.length === 0 ? '—' : atCounter.map((e) => ticketLabel(e.ticketNumber)).join('  ')}
+              </p>
+            </div>
+            <ul className="divide-y divide-line text-sm">
+              {waiting.slice(0, 5).map((entry) => (
+                <li key={entry.id} className="flex items-center justify-between px-4 py-2">
+                  <span className="num">{ticketLabel(entry.ticketNumber)}</span>
+                  <span className="truncate pl-3 text-ink-muted">{entry.customerName}</span>
+                </li>
+              ))}
+              {waiting.length === 0 && <li className="px-4 py-3 text-ink-muted">Nobody waiting.</li>}
+            </ul>
+          </div>
+        </section>
       </div>
 
-      {role === 'OWNER' && <Analytics slug={slug} today={today} />}
-
-      <Card className="mt-6">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="font-semibold">Today&apos;s bookings</h2>
-          <Link to="calendar" className="text-sm font-medium text-brand-600 underline">
-            Open calendar
-          </Link>
-        </div>
-        {todaysBookings.isLoading ? (
-          <Skeleton className="h-24 w-full" />
-        ) : todaysBookings.error ? (
-          <ErrorState error={todaysBookings.error} />
-        ) : active.length === 0 ? (
-          <EmptyState title="No bookings today" />
-        ) : (
-          <ul className="divide-y divide-slate-100">
-            {active.map((booking) => (
-              <li key={booking.id} className="flex items-center justify-between gap-3 py-2 text-sm">
-                <span className="w-20 font-medium tabular-nums">
-                  {formatTime(booking.startsAt, settings.timezone)}
-                </span>
-                <span className="flex-1 truncate">
-                  {booking.customerName} · {booking.serviceName}
-                </span>
-                <span className="hidden text-slate-500 sm:inline">{booking.staffName}</span>
-                <Badge value={booking.status} />
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
+      {role === 'OWNER' && <Performance slug={slug} today={today} />}
     </div>
   );
 }
 
-function Kpi({ label, value, hint }: { label: string; value: string | null; hint?: string }) {
-  return (
-    <Card>
-      <p className="text-sm text-slate-500">{label}</p>
-      {value === null ? (
-        <Skeleton className="mt-2 h-8 w-20" />
-      ) : (
-        <p className="mt-1 text-2xl font-bold tabular-nums">{value}</p>
-      )}
-      {hint && <p className="mt-1 text-xs text-slate-500">{hint}</p>}
-    </Card>
-  );
-}
-
-function Analytics({ slug, today }: { slug: string; today: string }) {
+function Performance({ slug, today }: { slug: string; today: string }) {
   const toast = useToast();
   const [days, setDays] = useState(30);
   const [exporting, setExporting] = useState(false);
@@ -144,128 +202,182 @@ function Analytics({ slug, today }: { slug: string; today: string }) {
 
   const perDay = (data?.bookingsPerDay ?? []).map((d) => ({
     ...d,
-    label: d.date.slice(5),
+    label: d.date.slice(5).replace('-', '/'),
     revenue: d.revenueCentavos / 100,
     noShowRate: d.completed + d.noShow === 0 ? 0 : Math.round((d.noShow / (d.completed + d.noShow)) * 100),
   }));
-  const hours = (data?.busiestHours ?? []).map((h) => ({ ...h, label: `${h.hour}:00` }));
+  const hours = (data?.busiestHours ?? []).map((h) => ({
+    ...h,
+    label: `${h.hour % 12 || 12}${h.hour < 12 ? 'a' : 'p'}`,
+  }));
+  const topTotal = Math.max(1, ...(data?.topServices ?? []).map((s) => s.bookings));
 
   return (
-    <section className="mt-6" aria-labelledby="analytics-heading">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <h2 id="analytics-heading" className="text-lg font-semibold">
-          Performance
-        </h2>
+    <section className="mt-12" aria-labelledby="performance-heading">
+      <div className="mb-4 flex flex-wrap items-end justify-between gap-3 border-b border-line pb-4">
+        <div>
+          <h2 id="performance-heading" className="text-lg font-semibold">
+            How the shop is doing
+          </h2>
+          <p className="num text-[13px] text-ink-muted">
+            {from} → {today}
+          </p>
+        </div>
         <div className="flex flex-wrap items-center gap-2">
-          <div
-            role="group"
-            aria-label="Date range"
-            className="flex rounded-lg bg-white p-1 ring-1 ring-slate-200"
-          >
-            {RANGES.map((range) => (
-              <button
-                key={range.days}
-                type="button"
-                aria-pressed={days === range.days}
-                onClick={() => setDays(range.days)}
-                className={`rounded-md px-3 py-1 text-sm font-medium ${
-                  days === range.days ? 'bg-brand-600 text-white' : 'text-slate-600 hover:bg-slate-100'
-                }`}
-              >
-                {range.label}
-              </button>
-            ))}
-          </div>
+          <Segmented<number>
+            label="Date range"
+            value={days}
+            onChange={setDays}
+            options={[
+              { value: 7, label: '7d' },
+              { value: 30, label: '30d' },
+              { value: 60, label: '60d' },
+            ]}
+          />
           <Button variant="secondary" size="sm" loading={exporting} onClick={exportCsv}>
             Export CSV
           </Button>
         </div>
       </div>
+
       {error ? (
         <ErrorState error={error} onRetry={() => refetch()} />
       ) : (
         <>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Kpi label="Bookings" value={isLoading ? null : String(data!.totals.bookings)} />
-            <Kpi
-              label="Revenue (completed)"
-              value={isLoading ? null : formatPeso(data!.totals.revenueCentavos)}
-            />
-            <Kpi
-              label="No-show rate"
-              value={isLoading ? null : `${(data!.totals.noShowRate * 100).toFixed(1)}%`}
-              hint="No-shows ÷ (completed + no-shows)"
-            />
-            <Kpi label="Cancelled" value={isLoading ? null : String(data!.totals.cancelled)} />
-          </div>
+          <StatStrip
+            items={[
+              { label: 'Bookings', value: isLoading ? '…' : data!.totals.bookings },
+              {
+                label: 'Revenue',
+                value: isLoading ? '…' : formatPeso(data!.totals.revenueCentavos),
+                note: 'Completed visits',
+              },
+              {
+                label: 'No-show rate',
+                value: isLoading ? '…' : `${(data!.totals.noShowRate * 100).toFixed(1)}%`,
+                note: 'Of visits that should have happened',
+              },
+              { label: 'Cancelled', value: isLoading ? '…' : data!.totals.cancelled },
+            ]}
+          />
+
           <div className="mt-4 grid gap-4 lg:grid-cols-2">
-            <ChartCard title="Bookings per day" loading={isLoading}>
-              <BarChart data={perDay}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="label" tick={{ fontSize: 12 }} minTickGap={16} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 12 }} width={32} />
-                <Tooltip />
-                <Bar dataKey="completed" name="Completed" stackId="a" fill="#4f46e5" />
-                <Bar dataKey="noShow" name="No-show" stackId="a" fill="#f59e0b" />
-                <Bar dataKey="cancelled" name="Cancelled" stackId="a" fill="#cbd5e1" />
+            <ChartPanel
+              title="Bookings per day"
+              loading={isLoading}
+              legend={[
+                [PINE, 'Completed'],
+                [MARIGOLD, 'No-show'],
+                [LINE, 'Cancelled'],
+              ]}
+            >
+              <BarChart data={perDay} barCategoryGap={2}>
+                <CartesianGrid stroke={LINE} vertical={false} />
+                <XAxis
+                  dataKey="label"
+                  tick={AXIS}
+                  tickLine={false}
+                  axisLine={{ stroke: LINE }}
+                  minTickGap={24}
+                />
+                <YAxis allowDecimals={false} tick={AXIS} tickLine={false} axisLine={false} width={28} />
+                <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(23,22,15,0.04)' }} />
+                <Bar dataKey="completed" name="Completed" stackId="a" fill={PINE} />
+                <Bar dataKey="noShow" name="No-show" stackId="a" fill={MARIGOLD} />
+                <Bar dataKey="cancelled" name="Cancelled" stackId="a" fill={LINE} />
               </BarChart>
-            </ChartCard>
-            <ChartCard title="Revenue per day (₱)" loading={isLoading}>
+            </ChartPanel>
+            <ChartPanel title="Revenue per day" loading={isLoading}>
               <LineChart data={perDay}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="label" tick={{ fontSize: 12 }} minTickGap={16} />
-                <YAxis tick={{ fontSize: 12 }} width={48} />
-                <Tooltip formatter={(value: number) => formatPeso(value * 100)} />
+                <CartesianGrid stroke={LINE} vertical={false} />
+                <XAxis
+                  dataKey="label"
+                  tick={AXIS}
+                  tickLine={false}
+                  axisLine={{ stroke: LINE }}
+                  minTickGap={24}
+                />
+                <YAxis
+                  tick={AXIS}
+                  tickLine={false}
+                  axisLine={false}
+                  width={44}
+                  tickFormatter={(v: number) => (v >= 1000 ? `${v / 1000}k` : String(v))}
+                />
+                <Tooltip content={<ChartTooltip money />} />
                 <Line
-                  type="monotone"
+                  type="linear"
                   dataKey="revenue"
                   name="Revenue"
-                  stroke="#059669"
-                  strokeWidth={2}
+                  stroke={INK}
+                  strokeWidth={1.5}
                   dot={false}
                 />
               </LineChart>
-            </ChartCard>
-            <ChartCard title="No-show rate per day (%)" loading={isLoading}>
+            </ChartPanel>
+            <ChartPanel title="No-show rate per day" loading={isLoading}>
               <LineChart data={perDay}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="label" tick={{ fontSize: 12 }} minTickGap={16} />
-                <YAxis tick={{ fontSize: 12 }} width={32} domain={[0, 100]} />
-                <Tooltip formatter={(value: number) => `${value}%`} />
+                <CartesianGrid stroke={LINE} vertical={false} />
+                <XAxis
+                  dataKey="label"
+                  tick={AXIS}
+                  tickLine={false}
+                  axisLine={{ stroke: LINE }}
+                  minTickGap={24}
+                />
+                <YAxis
+                  tick={AXIS}
+                  tickLine={false}
+                  axisLine={false}
+                  width={36}
+                  domain={[0, 'auto']}
+                  tickFormatter={(v: number) => `${v}%`}
+                />
+                <Tooltip content={<ChartTooltip percent />} />
                 <Line
-                  type="monotone"
+                  type="step"
                   dataKey="noShowRate"
                   name="No-show rate"
-                  stroke="#f59e0b"
-                  strokeWidth={2}
+                  stroke={MARIGOLD}
+                  strokeWidth={1.5}
                   dot={false}
                 />
               </LineChart>
-            </ChartCard>
-            <ChartCard title="Busiest hours" loading={isLoading}>
+            </ChartPanel>
+            <ChartPanel title="Busiest hours" loading={isLoading}>
               <BarChart data={hours}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="label" tick={{ fontSize: 12 }} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 12 }} width={32} />
-                <Tooltip />
-                <Bar dataKey="bookings" name="Bookings" fill="#0ea5e9" />
+                <CartesianGrid stroke={LINE} vertical={false} />
+                <XAxis dataKey="label" tick={AXIS} tickLine={false} axisLine={{ stroke: LINE }} />
+                <YAxis allowDecimals={false} tick={AXIS} tickLine={false} axisLine={false} width={28} />
+                <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(23,22,15,0.04)' }} />
+                <Bar dataKey="bookings" name="Bookings" fill={INK} />
               </BarChart>
-            </ChartCard>
+            </ChartPanel>
           </div>
+
           {data && data.topServices.length > 0 && (
-            <Card className="mt-4">
-              <h3 className="font-semibold">Top services</h3>
-              <ul className="mt-3 divide-y divide-slate-100 text-sm">
+            <div className="mt-4 rounded-lg border border-line bg-surface p-5">
+              <h3 className="eyebrow">Most booked services</h3>
+              <ul className="mt-4 space-y-3">
                 {data.topServices.map((service) => (
-                  <li key={service.serviceId} className="flex justify-between py-2">
-                    <span>{service.name}</span>
-                    <span className="tabular-nums text-slate-600">
-                      {service.bookings} bookings · {formatPeso(service.revenueCentavos)}
+                  <li
+                    key={service.serviceId}
+                    className="grid grid-cols-[1fr,auto] items-center gap-x-4 gap-y-1 text-sm sm:grid-cols-[180px,1fr,170px]"
+                  >
+                    <span className="truncate">{service.name}</span>
+                    <span className="col-span-2 row-start-2 h-1.5 bg-line sm:col-span-1 sm:row-start-auto">
+                      <span
+                        className="block h-full bg-pine-600"
+                        style={{ width: `${(service.bookings / topTotal) * 100}%` }}
+                      />
+                    </span>
+                    <span className="num text-right text-ink-muted">
+                      {service.bookings} · {formatPeso(service.revenueCentavos)}
                     </span>
                   </li>
                 ))}
               </ul>
-            </Card>
+            </div>
           )}
         </>
       )}
@@ -273,11 +385,33 @@ function Analytics({ slug, today }: { slug: string; today: string }) {
   );
 }
 
-function ChartCard({ title, loading, children }: { title: string; loading: boolean; children: JSX.Element }) {
+function ChartPanel({
+  title,
+  loading,
+  legend,
+  children,
+}: {
+  title: string;
+  loading: boolean;
+  legend?: [string, string][];
+  children: ReactElement;
+}) {
   return (
-    <Card>
-      <h3 className="mb-3 font-semibold">{title}</h3>
-      <figure aria-label={title} className="h-64">
+    <figure className="rounded-lg border border-line bg-surface p-5">
+      <figcaption className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+        <span className="eyebrow">{title}</span>
+        {legend && (
+          <span className="flex gap-3 text-xs text-ink-muted">
+            {legend.map(([color, label]) => (
+              <span key={label} className="flex items-center gap-1.5">
+                <span className="h-2 w-2" style={{ background: color }} aria-hidden="true" />
+                {label}
+              </span>
+            ))}
+          </span>
+        )}
+      </figcaption>
+      <div className="h-56">
         {loading ? (
           <Skeleton className="h-full w-full" />
         ) : (
@@ -285,7 +419,32 @@ function ChartCard({ title, loading, children }: { title: string; loading: boole
             {children}
           </ResponsiveContainer>
         )}
-      </figure>
-    </Card>
+      </div>
+    </figure>
+  );
+}
+
+function ChartTooltip({
+  active,
+  payload,
+  label,
+  money = false,
+  percent = false,
+}: TooltipProps<number, string> & { money?: boolean; percent?: boolean }) {
+  if (!active || !payload || payload.length === 0) {
+    return null;
+  }
+  return (
+    <div className="rounded-md bg-ink px-3 py-2 text-xs text-paper">
+      <p className="num mb-1 text-paper/60">{label}</p>
+      {payload.map((item) => (
+        <p key={item.name} className="flex justify-between gap-4">
+          <span>{item.name}</span>
+          <span className="num">
+            {money ? formatPeso((item.value ?? 0) * 100) : percent ? `${item.value}%` : item.value}
+          </span>
+        </p>
+      ))}
+    </div>
   );
 }

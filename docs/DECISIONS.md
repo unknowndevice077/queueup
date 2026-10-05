@@ -149,3 +149,15 @@ Testcontainers is pinned to 1.21.4: earlier versions use Docker API 1.32, which 
 ## ADR-025: Frontend structure
 
 React Router routes with lazy-loaded dashboard pages (Recharts lives in its own chunk), TanStack Query for server state, React Hook Form + Zod for forms, and a tiny toast context instead of a UI library. Booking-flow state lives in the URL, so it survives the sign-in redirect and the back button works. Dates in the picker are `YYYY-MM-DD` strings, and all formatting uses `Intl` with the tenant's `timeZone`, so the browser's own zone never leaks in.
+
+## ADR-026: Visual design system
+
+**Context.** The first UI used Tailwind defaults (indigo accents, gradient hero, rounded shadowed cards, a six-tile feature grid) and read as a generic template.
+
+**Decision.** A deliberate "ticket counter" identity, defined once in `tailwind.config.js` and `components/ui.tsx`:
+- **Palette:** warm paper background, near-black ink, a single pine-green action colour, and marigold reserved for "now serving" and today markers. Statuses are a coloured dot plus plain text, not rainbow pills.
+- **Type:** IBM Plex Sans for text, IBM Plex Mono for every time, price, ticket number and figure, so tabular data lines up and tickets feel printed.
+- **Structure:** hairline borders and dividers instead of drop shadows, tighter radii, and tables or lists rather than cards in a grid.
+- **Real-world references:** the price list uses dotted leaders like a shop board, the booking summary and walk-in ticket are perforated stubs, the TV board borrows from ticket-machine displays, and the day calendar is a proper time grid with off-hours hatched.
+
+**Consequences.** Every page composes the same primitives (`Button`, `Field`, `Select`, `Badge`, `StatStrip`, `Segmented`, `PageHeader`), so new screens stay consistent. Accessible names were kept stable, so the behaviour tests did not change.
