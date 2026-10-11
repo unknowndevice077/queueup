@@ -23,7 +23,7 @@ const ROLES: Role[] = [
     key: 'customer',
     who: 'A customer',
     what: 'Book a haircut at Kanto Cuts from your phone.',
-    steps: ['Pick a service', 'Choose a day, barber and time', 'Confirm and get an email'],
+    steps: ['Pick a service', 'Choose a day, barber and time', 'Confirm and see it in My bookings'],
     email: 'customer@demo.queueup',
     to: '/b/kanto-cuts',
     action: 'Book as Ana',
