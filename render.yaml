@@ -35,7 +35,7 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: FRONTEND_ORIGIN
-        sync: false # e.g. https://queueup.vercel.app
+        sync: false # e.g. https://your-app.vercel.app
       - key: SEED_DEMO
         value: "true"
       - key: JAVA_OPTS

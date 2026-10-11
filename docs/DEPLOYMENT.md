@@ -21,7 +21,7 @@ CI (`.github/workflows/ci.yml`) runs on every push and PR to `main`: backend che
 
    | Variable | Value |
    |---|---|
-   | `FRONTEND_ORIGIN` | Your Vercel URL, e.g. `https://queueup.vercel.app` (comma-separate several) |
+   | `FRONTEND_ORIGIN` | Your Vercel URL, e.g. `https://your-app.vercel.app` (comma-separate several) |
    | `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM` | Your SMTP provider's credentials |
    | `PAYMONGO_SECRET_KEY` | `sk_test_...` (step 4) |
    | `PAYMONGO_WEBHOOK_SECRET` | `whsk_...` (step 4) |

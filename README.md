@@ -14,7 +14,7 @@ Clinics, barbershops, salons and repair shops in the Philippines still run on Fa
 
 ## Live demo
 
-**Demo:** _https://queueup.vercel.app (placeholder, see [deployment](docs/DEPLOYMENT.md))_ · **API docs:** _https://queueup-api.onrender.com/swagger-ui_
+**Demo:** not deployed yet. See [deployment](docs/DEPLOYMENT.md) to run your own.
 
 | Role | Email | Password |
 |---|---|---|
