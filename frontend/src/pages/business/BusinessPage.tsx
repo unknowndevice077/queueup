@@ -1,7 +1,8 @@
 import { Link, useParams } from 'react-router-dom';
 import { usePublicQueue, usePublicTenant } from '@/lib/queries';
 import { formatDuration, formatPeso } from '@/lib/format';
-import { EmptyState, ErrorState, Skeleton, SkeletonList } from '@/components/ui';
+import { buttonClass, EmptyState, ErrorState, Skeleton, SkeletonList } from '@/components/ui';
+import { ChevronRight } from '@/components/icons';
 
 export function BusinessPage() {
   const { slug = '' } = useParams();
@@ -37,19 +38,15 @@ export function BusinessPage() {
         </h1>
         <p className="mt-2 text-ink-2">{tenant.address}</p>
         <div className="mt-6 flex flex-wrap gap-3">
-          <Link
-            to={`/b/${slug}/book`}
-            className="inline-flex h-11 items-center rounded-md bg-pine-600 px-5 font-medium text-white hover:bg-pine-700"
-          >
+          <Link to={`/b/${slug}/book`} className={buttonClass('primary', 'lg')}>
             Book an appointment
           </Link>
-          <Link
-            to={`/b/${slug}/queue`}
-            className="inline-flex h-11 items-center gap-2 rounded-md border border-line-strong bg-surface px-5 font-medium text-ink hover:border-ink-faint"
-          >
+          <Link to={`/b/${slug}/queue`} className={buttonClass('secondary', 'lg')}>
             Walk in instead
             {waiting !== null && (
-              <span className="num text-[13px] font-normal text-ink-muted">· {waiting} waiting</span>
+              <span className="rounded-full bg-paper px-2 py-0.5 text-[13px] font-normal text-ink-muted">
+                <span className="num">{waiting}</span> waiting
+              </span>
             )}
           </Link>
         </div>
@@ -57,7 +54,7 @@ export function BusinessPage() {
 
       <div className="grid gap-12 pt-8 lg:grid-cols-[1fr,280px]">
         <section aria-labelledby="services-heading">
-          <h2 id="services-heading" className="eyebrow">
+          <h2 id="services-heading" className="font-semibold">
             Services and prices
           </h2>
           {tenant.services.length === 0 ? (
@@ -71,19 +68,23 @@ export function BusinessPage() {
                   <Link
                     to={`/b/${slug}/book?service=${service.id}`}
                     aria-label={`Book ${service.name}`}
-                    className="group block py-4"
+                    className="group -mx-3 flex items-center gap-3 rounded-md px-3 py-4 transition-colors duration-150 hover:bg-surface active:bg-pine-50"
                   >
-                    <div className="flex items-baseline">
-                      <span className="text-[17px] font-medium text-ink group-hover:underline group-hover:underline-offset-4">
-                        {service.name}
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-baseline">
+                        <span className="text-[17px] font-medium text-ink">{service.name}</span>
+                        <span className="leader" aria-hidden="true" />
+                        <span className="num text-[16px] text-ink">{formatPeso(service.priceCentavos)}</span>
                       </span>
-                      <span className="leader" aria-hidden="true" />
-                      <span className="num text-[16px] text-ink">{formatPeso(service.priceCentavos)}</span>
-                    </div>
-                    <p className="mt-1 text-sm text-ink-muted">
-                      <span className="num">{formatDuration(service.durationMinutes)}</span>
-                      {service.description && <> · {service.description}</>}
-                    </p>
+                      <span className="mt-1 block text-sm text-ink-muted">
+                        {formatDuration(service.durationMinutes)}
+                        {service.description && <>. {service.description}</>}
+                      </span>
+                    </span>
+                    <span className="flex items-center gap-1 text-sm font-medium text-pine-600 opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100">
+                      Book
+                      <ChevronRight className="h-3.5 w-3.5" />
+                    </span>
                   </Link>
                 </li>
               ))}
@@ -93,14 +94,14 @@ export function BusinessPage() {
 
         <aside className="space-y-8 text-sm">
           <div>
-            <h2 className="eyebrow">Contact</h2>
+            <h2 className="font-semibold">Contact</h2>
             <dl className="mt-3 space-y-1 text-ink-2">
               {tenant.contactPhone && <dd className="num">{tenant.contactPhone}</dd>}
               {tenant.contactEmail && <dd>{tenant.contactEmail}</dd>}
             </dl>
           </div>
           <div>
-            <h2 className="eyebrow">Good to know</h2>
+            <h2 className="font-semibold">Good to know</h2>
             <ul className="mt-3 space-y-2 text-ink-2">
               <li>Free cancellation until {tenant.cancellationWindowHours} hours before your appointment.</li>
               <li>Book at least {formatDuration(tenant.bookingLeadTimeMinutes)} ahead.</li>
@@ -115,7 +116,7 @@ export function BusinessPage() {
           </div>
           {tenant.staff.length > 0 && (
             <div>
-              <h2 className="eyebrow">Team</h2>
+              <h2 className="font-semibold">Team</h2>
               <ul className="mt-3 space-y-1 text-ink-2">
                 {tenant.staff.map((member) => (
                   <li key={member.id}>{member.name}</li>

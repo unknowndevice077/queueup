@@ -3,7 +3,18 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { queryKeys } from '@/lib/queries';
 import type { Service, StaffMember, WorkingHoursRange } from '@/lib/types';
-import { Badge, Button, ErrorState, Field, PageHeader, SkeletonList } from '@/components/ui';
+import {
+  Avatar,
+  Badge,
+  Button,
+  Checkbox,
+  ErrorState,
+  Field,
+  PageHeader,
+  SkeletonList,
+} from '@/components/ui';
+import { useConfirm } from '@/components/Dialog';
+import { Close, Plus } from '@/components/icons';
 import { useToast } from '@/components/Toaster';
 import { useDashboard } from './DashboardLayout';
 
@@ -26,6 +37,7 @@ function dayRanges(hours: WorkingHoursRange[], day: number) {
 export default function StaffPage() {
   const { slug } = useDashboard();
   const toast = useToast();
+  const confirm = useConfirm();
   const queryClient = useQueryClient();
   const [inviteEmail, setInviteEmail] = useState('');
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -54,7 +66,16 @@ export default function StaffPage() {
   const update = useMutation({
     mutationFn: ({ id, body }: { id: string; body: Partial<Pick<StaffMember, 'role' | 'active'>> }) =>
       api.patch<StaffMember>(`/api/t/${slug}/staff/${id}`, body),
-    onSuccess: refresh,
+    onSuccess: (member, { body }) => {
+      toast.success(
+        body.role === 'OWNER'
+          ? `${member.fullName} is now an owner.`
+          : body.active === false
+            ? `${member.fullName} was removed. Their past bookings stay on record.`
+            : `${member.fullName} is back on the team.`,
+      );
+      return refresh();
+    },
     onError: (e) => toast.error(e),
   });
 
@@ -62,11 +83,7 @@ export default function StaffPage() {
 
   return (
     <div>
-      <PageHeader
-        eyebrow="Set up"
-        title="Staff & hours"
-        description="Who works here, what they do, and when they're in."
-      />
+      <PageHeader title="Staff & hours" description="Who works here, what they do, and when they're in." />
 
       <form
         className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end"
@@ -100,17 +117,20 @@ export default function StaffPage() {
         <ul className="divide-y divide-line rounded-lg border border-line bg-surface">
           {staff.data!.map((member) => (
             <li key={member.id} className={member.active ? '' : 'bg-paper/60'}>
-              <div className="grid gap-4 px-5 py-4 lg:grid-cols-[200px,minmax(0,1fr),auto] lg:items-start">
-                <div>
-                  <p className={`font-medium ${member.active ? '' : 'text-ink-muted line-through'}`}>
-                    {member.fullName}
-                  </p>
-                  <p className="truncate text-[13px] text-ink-muted">{member.email}</p>
-                  <div className="mt-1">
-                    <Badge
-                      value={member.role}
-                      label={member.active ? (member.role === 'OWNER' ? 'Owner' : 'Staff') : 'Removed'}
-                    />
+              <div className="grid gap-4 px-5 py-4 lg:grid-cols-[220px,minmax(0,1fr),250px] lg:items-start">
+                <div className="flex min-w-0 gap-3">
+                  <Avatar name={member.fullName} className="h-9 w-9 text-xs" />
+                  <div className="min-w-0">
+                    <p className={`font-medium ${member.active ? '' : 'text-ink-muted line-through'}`}>
+                      {member.fullName}
+                    </p>
+                    <p className="truncate text-[13px] text-ink-muted">{member.email}</p>
+                    <div className="mt-1">
+                      <Badge
+                        value={member.role}
+                        label={member.active ? (member.role === 'OWNER' ? 'Owner' : 'Staff') : 'Removed'}
+                      />
+                    </div>
                   </div>
                 </div>
                 <div className="min-w-0 text-[13px]">
@@ -122,7 +142,7 @@ export default function StaffPage() {
                           key={day}
                           className={`px-1.5 py-1.5 ${ranges.length ? 'bg-surface' : 'hatched bg-paper'}`}
                         >
-                          <p className="font-mono text-2xs text-ink-muted">{day}</p>
+                          <p className="text-[11px] text-ink-muted">{day}</p>
                           {ranges.length === 0 ? (
                             <p className="num text-[11px] leading-tight text-ink-faint">off</p>
                           ) : (
@@ -142,7 +162,7 @@ export default function StaffPage() {
                   <p className="mt-2 truncate text-ink-muted">
                     {member.serviceIds.length === 0
                       ? 'No services assigned, so customers cannot book them.'
-                      : member.serviceIds.map(serviceName).filter(Boolean).join(' · ')}
+                      : member.serviceIds.map(serviceName).filter(Boolean).join(', ')}
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-1.5 lg:flex-nowrap lg:justify-end">
@@ -158,7 +178,16 @@ export default function StaffPage() {
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => update.mutate({ id: member.id, body: { role: 'OWNER' } })}
+                      onClick={async () => {
+                        const ok = await confirm({
+                          title: `Make ${member.fullName} an owner?`,
+                          body: 'Owners can change services, prices, staff and settings, and see the activity log.',
+                          confirmLabel: 'Make owner',
+                        });
+                        if (ok) {
+                          update.mutate({ id: member.id, body: { role: 'OWNER' } });
+                        }
+                      }}
                     >
                       Make owner
                     </Button>
@@ -166,7 +195,20 @@ export default function StaffPage() {
                   <Button
                     size="sm"
                     variant="ghost"
-                    onClick={() => update.mutate({ id: member.id, body: { active: !member.active } })}
+                    onClick={async () => {
+                      if (member.active) {
+                        const ok = await confirm({
+                          title: `Remove ${member.fullName} from the team?`,
+                          body: 'They stop appearing on the booking page. Their past and upcoming bookings stay on the calendar.',
+                          confirmLabel: 'Remove',
+                          danger: true,
+                        });
+                        if (!ok) {
+                          return;
+                        }
+                      }
+                      update.mutate({ id: member.id, body: { active: !member.active } });
+                    }}
                   >
                     {member.active ? 'Remove' : 'Restore'}
                   </Button>
@@ -231,36 +273,33 @@ function StaffEditor({
   };
 
   const timeInput =
-    'h-8 rounded border border-line-strong bg-surface px-1.5 text-[13px] focus:border-pine-600 focus:outline-none';
+    'h-8 rounded border border-line-strong bg-surface px-1.5 text-[13px] transition-colors hover:border-ink-faint focus:border-pine-600 focus:outline-none focus:ring-[3px] focus:ring-pine-600/15';
 
   return (
-    <div className="grid gap-8 border-t border-line bg-paper/50 px-5 py-5 lg:grid-cols-[220px,1fr]">
+    <div className="grid animate-fade-in gap-8 border-t border-line bg-paper/50 px-5 py-5 lg:grid-cols-[220px,1fr]">
       <fieldset>
-        <legend className="eyebrow mb-3">Does these services</legend>
-        <div className="space-y-2">
+        <legend className="mb-3 text-sm font-semibold">Does these services</legend>
+        <div className="space-y-1">
           {services
             .filter((s) => s.active)
             .map((service) => (
-              <label key={service.id} className="flex items-center gap-2.5 text-sm">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 rounded-sm border-line-strong accent-[#1F5C3E]"
-                  checked={serviceIds.includes(service.id)}
-                  onChange={(event) =>
-                    setServiceIds((ids) =>
-                      event.target.checked ? [...ids, service.id] : ids.filter((id) => id !== service.id),
-                    )
-                  }
-                />
-                {service.name}
-              </label>
+              <Checkbox
+                key={service.id}
+                label={service.name}
+                checked={serviceIds.includes(service.id)}
+                onChange={(event) =>
+                  setServiceIds((ids) =>
+                    event.target.checked ? [...ids, service.id] : ids.filter((id) => id !== service.id),
+                  )
+                }
+              />
             ))}
         </div>
       </fieldset>
 
       <fieldset>
         <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-          <legend className="eyebrow">Weekly hours</legend>
+          <legend className="text-sm font-semibold">Weekly hours</legend>
           <button
             type="button"
             onClick={copyMondayToWeekdays}
@@ -313,9 +352,9 @@ function StaffEditor({
                             type="button"
                             aria-label={`Remove ${dayName} ${h.startTime} to ${h.endTime}`}
                             onClick={() => setHours((current) => current.filter((_, j) => j !== i))}
-                            className="px-1 text-ink-faint hover:text-brick-600"
+                            className="grid h-7 w-7 place-items-center rounded text-ink-faint transition-colors hover:bg-brick-50 hover:text-brick-600"
                           >
-                            ×
+                            <Close className="h-3.5 w-3.5" />
                           </button>
                         </span>
                       ))}
@@ -332,9 +371,10 @@ function StaffEditor({
                             : { dayOfWeek: day, startTime: '13:00', endTime: '18:00' },
                         ])
                       }
-                      className="text-[13px] text-pine-600 hover:underline hover:underline-offset-2"
+                      className="inline-flex items-center gap-1 rounded px-1.5 py-1 text-[13px] text-pine-600 transition-colors hover:bg-pine-50"
                     >
-                      {ranges.length === 0 ? '+ Add hours' : '+ After break'}
+                      <Plus className="h-3.5 w-3.5" />
+                      {ranges.length === 0 ? 'Add hours' : 'After break'}
                     </button>
                   </td>
                 </tr>

@@ -1,5 +1,6 @@
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/auth/AuthContext';
+import { buttonClass } from './ui';
 
 export function Logo({ inverted = false }: { inverted?: boolean }) {
   return (
@@ -18,8 +19,8 @@ export function Logo({ inverted = false }: { inverted?: boolean }) {
 }
 
 const navClass = ({ isActive }: { isActive: boolean }) =>
-  `px-2.5 py-1.5 text-sm transition-colors ${
-    isActive ? 'text-ink underline decoration-2 underline-offset-[6px]' : 'text-ink-muted hover:text-ink'
+  `rounded-md px-2.5 py-1.5 text-sm transition-colors duration-150 ${
+    isActive ? 'bg-ink/[0.06] font-medium text-ink' : 'text-ink-muted hover:bg-ink/[0.04] hover:text-ink'
   }`;
 
 export function PublicLayout() {
@@ -34,7 +35,7 @@ export function PublicLayout() {
       >
         Skip to content
       </a>
-      <header className="border-b border-line bg-paper">
+      <header className="sticky top-0 z-30 border-b border-line bg-paper/90 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
           <Logo />
           <nav aria-label="Main" className="flex items-center gap-1">
@@ -58,20 +59,20 @@ export function PublicLayout() {
                     await logout();
                     navigate('/');
                   }}
-                  className="px-2.5 py-1.5 text-sm text-ink-muted hover:text-ink"
+                  className="rounded-md px-2.5 py-1.5 text-sm text-ink-muted transition-colors duration-150 hover:bg-ink/[0.04] hover:text-ink"
                 >
                   Sign out
                 </button>
               </>
             ) : (
               <>
+                <NavLink to="/demo" className={navClass}>
+                  Try the demo
+                </NavLink>
                 <NavLink to="/login" className={navClass}>
                   Sign in
                 </NavLink>
-                <Link
-                  to="/register"
-                  className="ml-1 inline-flex h-8 items-center rounded-md bg-ink px-3 text-[13px] font-medium text-paper hover:bg-ink-2"
-                >
+                <Link to="/register" className={buttonClass('ink', 'sm', 'ml-1')}>
                   Create account
                 </Link>
               </>
@@ -85,7 +86,7 @@ export function PublicLayout() {
       <footer className="border-t border-line">
         <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-6 text-[13px] text-ink-muted sm:flex-row sm:justify-between sm:px-6">
           <span>QueueUp. Bookings and walk-in queues for neighbourhood businesses.</span>
-          <span className="num">Times shown in each business&apos;s local time.</span>
+          <span>Times are shown in each business&apos;s local time.</span>
         </div>
       </footer>
     </div>

@@ -66,7 +66,7 @@ export function LoginPage() {
       }
       aside={
         <div>
-          <p className="eyebrow">Demo accounts</p>
+          <p className="caption">Demo accounts</p>
           <p className="mt-2 text-sm text-ink-2">
             Every demo account uses the password <span className="num">Demo12345!</span>
           </p>

@@ -6,6 +6,7 @@ import { queryKeys } from '@/lib/queries';
 import type { Blackout, Page, StaffMember } from '@/lib/types';
 import { Button, EmptyState, ErrorState, Field, PageHeader, Select, SkeletonList } from '@/components/ui';
 import { useToast } from '@/components/Toaster';
+import { useConfirm } from '@/components/Dialog';
 import { useAuth } from '@/auth/AuthContext';
 import { useDashboard } from './DashboardLayout';
 
@@ -14,6 +15,7 @@ export default function BlackoutsPage() {
   const { memberships } = useAuth();
   const myMembershipId = memberships.find((m) => m.tenantSlug === slug)?.membershipId ?? '';
   const toast = useToast();
+  const confirm = useConfirm();
   const queryClient = useQueryClient();
   const [form, setForm] = useState({
     membershipId: role === 'OWNER' ? '' : myMembershipId,
@@ -51,7 +53,10 @@ export default function BlackoutsPage() {
   });
   const remove = useMutation({
     mutationFn: (id: string) => api.del(`/api/t/${slug}/blackouts/${id}`),
-    onSuccess: refresh,
+    onSuccess: () => {
+      toast.success('Removed. Those times are bookable again.');
+      return refresh();
+    },
     onError: (e) => toast.error(e),
   });
 
@@ -65,13 +70,12 @@ export default function BlackoutsPage() {
     const sameDay = localDateOf(blackout.startsAt, tz) === localDateOf(blackout.endsAt, tz);
     return sameDay
       ? `${formatDate(blackout.startsAt, tz)}, ${formatTime(blackout.startsAt, tz)} – ${formatTime(blackout.endsAt, tz)}`
-      : `${formatDate(blackout.startsAt, tz)} ${formatTime(blackout.startsAt, tz)} → ${formatDate(blackout.endsAt, tz)} ${formatTime(blackout.endsAt, tz)}`;
+      : `${formatDate(blackout.startsAt, tz)} ${formatTime(blackout.startsAt, tz)} to ${formatDate(blackout.endsAt, tz)} ${formatTime(blackout.endsAt, tz)}`;
   };
 
   return (
     <div>
       <PageHeader
-        eyebrow="Set up"
         title="Time off"
         description={`Holidays, day offs and early closings. Times are ${settings.timezone.replace('_', ' ')} time.`}
       />
@@ -138,15 +142,17 @@ export default function BlackoutsPage() {
         <ErrorState error={blackouts.error} onRetry={() => blackouts.refetch()} />
       ) : (
         <>
-          <h2 className="eyebrow mb-2">Coming up</h2>
+          <h2 className="mb-2 font-semibold">Coming up</h2>
           {upcoming.length === 0 ? (
-            <EmptyState title="No time off scheduled" />
+            <EmptyState title="No time off scheduled">
+              Block a holiday or a day off above and customers won&apos;t be able to book it.
+            </EmptyState>
           ) : (
             <ul className="divide-y divide-line rounded-lg border border-line bg-surface">
               {upcoming.map((blackout) => (
                 <li
                   key={blackout.id}
-                  className="grid gap-1 px-5 py-3 text-sm sm:grid-cols-[160px,1fr,auto] sm:items-center sm:gap-4"
+                  className="grid animate-fade-in gap-1 px-5 py-3 text-sm sm:grid-cols-[160px,1fr,auto] sm:items-center sm:gap-4"
                 >
                   <span className="font-medium">{staffName(blackout.membershipId)}</span>
                   <span>
@@ -157,7 +163,18 @@ export default function BlackoutsPage() {
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => remove.mutate(blackout.id)}
+                      loading={remove.isPending && remove.variables === blackout.id}
+                      onClick={async () => {
+                        const ok = await confirm({
+                          title: 'Remove this time off?',
+                          body: `${staffName(blackout.membershipId)}, ${describe(blackout)}. Customers will be able to book these times again.`,
+                          confirmLabel: 'Remove',
+                          danger: true,
+                        });
+                        if (ok) {
+                          remove.mutate(blackout.id);
+                        }
+                      }}
                       className="justify-self-start sm:justify-self-end"
                     >
                       Remove
@@ -169,12 +186,13 @@ export default function BlackoutsPage() {
           )}
           {past.length > 0 && (
             <>
-              <h2 className="eyebrow mb-2 mt-8">Past</h2>
+              <h2 className="mb-2 mt-8 font-semibold">Past</h2>
               <ul className="space-y-1 text-sm text-ink-muted">
                 {past.map((blackout) => (
                   <li key={blackout.id}>
-                    {staffName(blackout.membershipId)} · <span className="num">{describe(blackout)}</span>
-                    {blackout.reason && <> · {blackout.reason}</>}
+                    <span className="text-ink-2">{staffName(blackout.membershipId)}</span>,{' '}
+                    <span className="num">{describe(blackout)}</span>
+                    {blackout.reason && <span className="text-ink-faint"> ({blackout.reason})</span>}
                   </li>
                 ))}
               </ul>

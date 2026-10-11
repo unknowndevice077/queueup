@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { formatTime, localHourOf } from '@/lib/format';
 import { slotOptions } from '@/lib/slots';
 import type { StaffAvailability } from '@/lib/types';
@@ -10,6 +11,8 @@ interface SlotPickerProps {
   timeZone: string;
   selected: string | null;
   onSelect(start: string, staffId: string | null): void;
+  /** Shown under the empty state, e.g. a button that jumps to the next day. */
+  emptyAction?: ReactNode;
 }
 
 const PERIODS = [
@@ -18,11 +21,18 @@ const PERIODS = [
   { label: 'Evening', from: 17, to: 24 },
 ];
 
-export function SlotPicker({ availability, staffId, timeZone, selected, onSelect }: SlotPickerProps) {
+export function SlotPicker({
+  availability,
+  staffId,
+  timeZone,
+  selected,
+  onSelect,
+  emptyAction,
+}: SlotPickerProps) {
   const options = slotOptions(availability, staffId);
   if (options.length === 0) {
     return (
-      <EmptyState title="No open slots on this day">
+      <EmptyState title="No open slots on this day" action={emptyAction}>
         Try another date, or let anyone available take you.
       </EmptyState>
     );
@@ -39,13 +49,13 @@ export function SlotPicker({ availability, staffId, timeZone, selected, onSelect
         }
         return (
           <fieldset key={period.label}>
-            <legend className="eyebrow mb-2.5">
+            <legend className="mb-2.5 text-sm font-medium text-ink">
               {period.label}
-              <span aria-hidden="true" className="ml-2 font-sans normal-case tracking-normal text-ink-faint">
+              <span aria-hidden="true" className="ml-2 font-normal text-ink-faint">
                 {slots.length} open
               </span>
             </legend>
-            <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-5">
+            <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4 xl:grid-cols-5">
               {slots.map((slot) => {
                 const isSelected =
                   selected !== null && new Date(selected).getTime() === new Date(slot.start).getTime();
@@ -55,9 +65,9 @@ export function SlotPicker({ availability, staffId, timeZone, selected, onSelect
                     type="button"
                     aria-pressed={isSelected}
                     onClick={() => onSelect(slot.start, slot.staffId)}
-                    className={`h-10 rounded-md border font-mono text-[13px] transition-colors ${
+                    className={`h-11 rounded-md border font-mono text-[13px] transition-[background-color,border-color,color,transform] duration-150 active:scale-[0.97] ${
                       isSelected
-                        ? 'border-ink bg-ink text-paper'
+                        ? 'border-pine-600 bg-pine-600 font-medium text-white'
                         : 'border-line-strong bg-surface text-ink hover:border-pine-600 hover:bg-pine-50'
                     }`}
                   >

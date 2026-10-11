@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthContext, type AuthContextValue } from '@/auth/AuthContext';
 import { ToastProvider } from '@/components/Toaster';
+import { ConfirmProvider } from '@/components/Dialog';
 import type { MembershipSummary, MeResponse } from '@/lib/types';
 
 export function fakeAuth(overrides: Partial<AuthContextValue> = {}): AuthContextValue {
@@ -37,7 +38,9 @@ export function renderWithProviders(
         future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
       >
         <ToastProvider>
-          <AuthContext.Provider value={auth}>{ui}</AuthContext.Provider>
+          <ConfirmProvider>
+            <AuthContext.Provider value={auth}>{ui}</AuthContext.Provider>
+          </ConfirmProvider>
         </ToastProvider>
       </MemoryRouter>
     </QueryClientProvider>,

@@ -55,10 +55,10 @@ export function BookingSuccessPage() {
       <h1 className="text-[28px] font-semibold tracking-[-0.015em]">{heading}</h1>
       <p className="mt-1.5 text-ink-2">{message}</p>
 
-      <div className="ticket mt-8 rounded-md">
+      <div className="ticket mt-8 animate-ticket-print rounded-md">
         <div className="flex items-start justify-between gap-4 px-5 pb-4 pt-5">
           <div>
-            <p className="eyebrow">{booking.tenantName}</p>
+            <p className="text-sm text-ink-muted">{booking.tenantName}</p>
             <p className="mt-2 text-lg font-medium">{booking.serviceName}</p>
             <p className="text-sm text-ink-muted">with {booking.staffName}</p>
           </div>
@@ -67,11 +67,11 @@ export function BookingSuccessPage() {
         <div className="ticket-tear" />
         <div className="grid grid-cols-2 gap-px bg-line">
           <div className="bg-surface px-5 py-4">
-            <p className="eyebrow">Date</p>
+            <p className="text-xs text-ink-muted">Date</p>
             <p className="mt-1 text-[15px]">{formatDate(booking.startsAt, booking.timezone)}</p>
           </div>
           <div className="bg-surface px-5 py-4">
-            <p className="eyebrow">Time</p>
+            <p className="text-xs text-ink-muted">Time</p>
             <p className="num mt-1 text-[22px] font-medium leading-tight">
               {formatTime(booking.startsAt, booking.timezone)}
             </p>

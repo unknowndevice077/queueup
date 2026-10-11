@@ -32,9 +32,18 @@
 }
 
 @layer components {
-  /* Small uppercase label used for section headings and table captions. */
-  .eyebrow {
-    @apply font-mono text-2xs font-medium uppercase tracking-label text-ink-muted;
+  /* Small sentence-case heading for a section or table column. */
+  .caption {
+    @apply text-[13px] font-medium text-ink-muted;
+  }
+
+  /* Rows and tiles that respond to the pointer as a whole. */
+  .row-action {
+    @apply cursor-pointer transition-colors duration-150 hover:bg-pine-50/60 active:bg-pine-50;
+  }
+
+  kbd {
+    @apply inline-grid h-5 min-w-[20px] place-items-center rounded border border-ink-faint/50 px-1 font-mono text-[11px] leading-none;
   }
 
   .num {

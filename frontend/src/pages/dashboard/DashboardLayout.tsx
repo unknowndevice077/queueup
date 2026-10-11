@@ -4,6 +4,7 @@ import { useTenantSettings } from '@/lib/queries';
 import type { TenantRole, TenantSettings } from '@/lib/types';
 import { ErrorState, PageSpinner } from '@/components/ui';
 import { Logo } from '@/components/PublicLayout';
+import { External } from '@/components/icons';
 
 export interface DashboardContext {
   slug: string;
@@ -27,10 +28,10 @@ const NAV: { to: string; label: string; ownerOnly?: boolean; group: 'today' | 's
 ];
 
 const linkClass = ({ isActive }: { isActive: boolean }) =>
-  `relative flex h-9 shrink-0 items-center whitespace-nowrap px-3 text-sm transition-colors md:rounded-none md:border-l-2 md:pl-4 ${
+  `relative flex h-9 shrink-0 items-center gap-2 whitespace-nowrap rounded-md px-3 text-sm transition-colors duration-150 md:mx-2 md:px-3 ${
     isActive
-      ? 'font-medium text-ink md:border-ink md:bg-surface'
-      : 'text-ink-muted hover:text-ink md:border-transparent'
+      ? 'bg-ink font-medium text-paper md:bg-surface md:text-ink md:shadow-[inset_2px_0_0_#17160F]'
+      : 'text-ink-muted hover:bg-ink/[0.05] hover:text-ink'
   }`;
 
 export default function DashboardLayout() {
@@ -60,14 +61,14 @@ export default function DashboardLayout() {
         <div className="px-4 pb-3 md:px-5 md:pb-5">
           {memberships.length > 1 ? (
             <>
-              <label htmlFor="tenant-switcher" className="eyebrow">
+              <label htmlFor="tenant-switcher" className="sr-only">
                 Business
               </label>
               <select
                 id="tenant-switcher"
                 value={slug}
                 onChange={(event) => navigate(`/dashboard/${event.target.value}`)}
-                className="mt-1.5 h-9 w-full rounded-md border border-line-strong bg-surface px-2 text-sm"
+                className="h-9 w-full cursor-pointer rounded-md border border-line-strong bg-surface px-2 text-sm font-medium transition-colors hover:border-ink-faint"
               >
                 {memberships.map((m) => (
                   <option key={m.tenantSlug} value={m.tenantSlug}>
@@ -86,10 +87,12 @@ export default function DashboardLayout() {
           className="flex gap-0.5 overflow-x-auto px-2 pb-2 md:flex-col md:gap-0 md:px-0 md:pb-0"
         >
           {(['today', 'setup'] as const).map((group) => (
-            <div key={group} className="contents md:mb-5 md:block">
-              <p className="eyebrow hidden px-5 pb-1.5 md:block">
-                {group === 'today' ? 'Day to day' : 'Set up'}
-              </p>
+            <div
+              key={group}
+              role="group"
+              aria-label={group === 'today' ? 'Day to day' : 'Set up'}
+              className={`contents md:block md:space-y-0.5 ${group === 'setup' ? 'md:mt-3 md:border-t md:border-line md:pt-3' : ''}`}
+            >
               {links
                 .filter((item) => item.group === group)
                 .map((item) => (
@@ -99,17 +102,28 @@ export default function DashboardLayout() {
                 ))}
             </div>
           ))}
-          <a
-            href={`/b/${slug}/display`}
-            target="_blank"
-            rel="noreferrer"
-            className={linkClass({ isActive: false })}
-          >
-            TV board ↗
-          </a>
-          <a href={`/b/${slug}`} target="_blank" rel="noreferrer" className={linkClass({ isActive: false })}>
-            Booking page ↗
-          </a>
+          <div className="contents md:mt-3 md:block md:space-y-0.5 md:border-t md:border-line md:pt-3">
+            <a
+              href={`/b/${slug}/display`}
+              target="_blank"
+              rel="noreferrer"
+              className={linkClass({ isActive: false })}
+            >
+              TV board
+              <External className="h-3.5 w-3.5 opacity-60" />
+              <span className="sr-only">(opens in a new tab)</span>
+            </a>
+            <a
+              href={`/b/${slug}`}
+              target="_blank"
+              rel="noreferrer"
+              className={linkClass({ isActive: false })}
+            >
+              Booking page
+              <External className="h-3.5 w-3.5 opacity-60" />
+              <span className="sr-only">(opens in a new tab)</span>
+            </a>
+          </div>
         </nav>
 
         <div className="mt-auto hidden border-t border-line px-5 py-4 md:block">

@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { api } from './api';
 import type { PublicQueueState, PublicTenant, StaffAvailability, TenantSettings } from './types';
 
@@ -36,6 +36,8 @@ export function useAvailability(slug: string, serviceId: string | null, date: st
       ),
     enabled: Boolean(serviceId && date),
     staleTime: 10_000,
+    // Keep the previous day's times on screen (dimmed) while the next day loads, instead of flashing a skeleton.
+    placeholderData: keepPreviousData,
   });
 }
 

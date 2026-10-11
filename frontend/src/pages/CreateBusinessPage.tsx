@@ -55,7 +55,7 @@ export function CreateBusinessPage() {
       intro="You'll be the owner. Staff, services and opening hours come next."
       aside={
         <div className="text-sm text-ink-2">
-          <p className="eyebrow">Your booking page</p>
+          <p className="caption">Your booking page</p>
           <p className="num mt-3 break-all text-[15px] text-ink">
             {window.location.host}/b/<span className="text-pine-600">{slug || 'your-shop'}</span>
           </p>

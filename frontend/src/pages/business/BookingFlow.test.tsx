@@ -85,18 +85,16 @@ async function walkToConfirmStep(user: ReturnType<typeof userEvent.setup>) {
     day: 'numeric',
     timeZone: 'UTC',
   }).format(new Date(`${tomorrow}T00:00:00Z`));
-  if (!screen.queryByRole('gridcell', { name: dayLabel })) {
-    await user.click(screen.getByRole('button', { name: 'Next month' }));
-  }
-  await user.click(screen.getByRole('gridcell', { name: dayLabel }));
+  await user.click(await screen.findByRole('button', { name: dayLabel }));
 
-  await user.click(await screen.findByRole('button', { name: /Any available/ }));
+  expect(await screen.findByRole('button', { name: /Anyone/ })).toHaveAttribute('aria-pressed', 'true');
   await user.click(await screen.findByRole('button', { name: /10:00/ }));
+  await user.click(screen.getAllByRole('button', { name: 'Continue' })[0]);
   return screen.findByRole('heading', { name: 'Confirm your booking' });
 }
 
 describe('<BookingFlow />', () => {
-  it('walks service -> date -> staff -> slot -> confirm and books the chosen slot', async () => {
+  it('walks service -> date, staff and time -> confirm and books the chosen slot', async () => {
     const user = userEvent.setup();
     bookingResponses.push(json(201, { id: 'b-1', status: 'CONFIRMED' }));
     renderFlow();

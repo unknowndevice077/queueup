@@ -6,7 +6,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { api, ApiError } from '@/lib/api';
 import { queryKeys } from '@/lib/queries';
 import type { TenantSettings } from '@/lib/types';
-import { Button, Field, PageHeader } from '@/components/ui';
+import { Button, Field, PageHeader, Switch } from '@/components/ui';
 import { useToast } from '@/components/Toaster';
 import { useDashboard } from './DashboardLayout';
 
@@ -95,7 +95,22 @@ export default function SettingsPage() {
 
   return (
     <div>
-      <PageHeader eyebrow="Set up" title="Settings" description={<span className="num">/b/{slug}</span>} />
+      <PageHeader
+        title="Settings"
+        description={
+          <>
+            Your booking page is{' '}
+            <a
+              href={`/b/${slug}`}
+              target="_blank"
+              rel="noreferrer"
+              className="num text-ink-2 underline underline-offset-2 hover:text-ink"
+            >
+              /b/{slug}
+            </a>
+          </>
+        }
+      />
       <form onSubmit={handleSubmit(onSubmit)} noValidate>
         <Section
           title="Business details"
@@ -145,20 +160,15 @@ export default function SettingsPage() {
           title="Deposits"
           description="Ask for part of the price up front through PayMongo (GCash, Maya, cards). Unpaid holds are released after 15 minutes."
         >
-          <label className="flex items-start gap-3 text-sm">
-            <input
-              type="checkbox"
-              className="mt-0.5 h-4 w-4 accent-[#1F5C3E]"
-              {...register('depositRequired')}
-            />
-            <span>
-              <span className="font-medium">Require a deposit to book</span>
-              <span className="block text-ink-muted">Customers pay before the booking is confirmed.</span>
-            </span>
-          </label>
+          <Switch
+            id="depositRequired"
+            label="Require a deposit to book"
+            description="Customers pay before the booking is confirmed."
+            {...register('depositRequired')}
+          />
           {depositRequired && (
             <Field
-              className="max-w-[200px]"
+              className="max-w-[200px] animate-fade-in"
               label="Deposit (% of price)"
               type="number"
               {...register('depositPercent')}
@@ -167,19 +177,28 @@ export default function SettingsPage() {
           )}
         </Section>
 
-        <div className="sticky bottom-0 -mx-4 flex items-center gap-3 border-t border-line bg-paper/95 px-4 py-4 backdrop-blur sm:-mx-8 sm:px-8">
-          <Button type="submit" loading={isSubmitting} disabled={!isDirty}>
-            Save changes
-          </Button>
-          {isDirty && (
-            <Button type="button" variant="ghost" onClick={() => reset()}>
+        {isDirty || isSubmitting ? (
+          <div className="sticky bottom-0 -mx-4 flex animate-bar-up items-center gap-3 border-t border-ink bg-ink px-4 py-3 text-paper sm:-mx-8 sm:px-8">
+            <span className="flex-1 text-sm">You have unsaved changes.</span>
+            <Button
+              type="button"
+              variant="ghost"
+              className="!text-paper/80 hover:!bg-paper/10"
+              onClick={() => reset()}
+            >
               Discard
             </Button>
-          )}
-          <span className="text-[13px] text-ink-muted">
-            {isDirty ? 'You have unsaved changes.' : 'All changes saved.'}
-          </span>
-        </div>
+            <Button
+              type="submit"
+              className="!bg-marigold-400 !text-ink hover:!bg-marigold-300"
+              loading={isSubmitting}
+            >
+              Save changes
+            </Button>
+          </div>
+        ) : (
+          <p className="py-6 text-[13px] text-ink-muted">All changes saved.</p>
+        )}
       </form>
     </div>
   );

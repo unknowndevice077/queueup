@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import {
@@ -14,6 +15,8 @@ import { queryKeys } from '@/lib/queries';
 import type { Booking, Page, StaffMember } from '@/lib/types';
 import { Badge, Button, EmptyState, ErrorState, PageHeader, Segmented, SkeletonList } from '@/components/ui';
 import { useToast } from '@/components/Toaster';
+import { useConfirm } from '@/components/Dialog';
+import { ChevronLeft, ChevronRight, Close, Phone } from '@/components/icons';
 import { useDashboard } from './DashboardLayout';
 
 type View = 'day' | 'week';
@@ -33,9 +36,23 @@ function toMinutes(time: string): number {
 export default function CalendarPage() {
   const { slug, settings } = useDashboard();
   const timeZone = settings.timezone;
-  const [view, setView] = useState<View>('day');
-  const [anchor, setAnchor] = useState(() => todayIn(timeZone));
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  // View, day and the open booking live in the URL so the overview can link straight to a booking.
+  const [params, setParams] = useSearchParams();
+  const view: View = params.get('view') === 'week' ? 'week' : 'day';
+  const anchor = params.get('date') ?? todayIn(timeZone);
+  const selectedId = params.get('booking');
+  const setUrl = (changes: Record<string, string | null>) =>
+    setParams(
+      (current) => {
+        const next = new URLSearchParams(current);
+        Object.entries(changes).forEach(([k, v]) => (v === null ? next.delete(k) : next.set(k, v)));
+        return next;
+      },
+      { replace: true },
+    );
+  const setView = (v: View) => setUrl({ view: v === 'week' ? 'week' : null, booking: null });
+  const setAnchor = (d: string) => setUrl({ date: d === todayIn(timeZone) ? null : d, booking: null });
+  const setSelectedId = (id: string | null) => setUrl({ booking: id });
   const from = anchor;
   const to = view === 'day' ? anchor : addDays(anchor, 6);
   const isToday = anchor === todayIn(timeZone);
@@ -54,10 +71,38 @@ export default function CalendarPage() {
   const selected = list.find((b) => b.id === selectedId) ?? null;
   const step = view === 'day' ? 1 : 7;
 
+  // Arrow keys move between days or weeks, T jumps to today, Escape closes the open booking.
+  const keys = useRef<(event: KeyboardEvent) => void>(() => {});
+  keys.current = (event) => {
+    const target = event.target as HTMLElement;
+    if (
+      event.metaKey ||
+      event.ctrlKey ||
+      event.altKey ||
+      ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) ||
+      target.closest('dialog')
+    ) {
+      return;
+    }
+    if (event.key === 'ArrowLeft') {
+      setAnchor(addDays(anchor, -step));
+    } else if (event.key === 'ArrowRight') {
+      setAnchor(addDays(anchor, step));
+    } else if (event.key.toLowerCase() === 't') {
+      setAnchor(todayIn(timeZone));
+    } else if (event.key === 'Escape' && selectedId) {
+      setSelectedId(null);
+    }
+  };
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => keys.current(event);
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
   return (
     <div>
       <PageHeader
-        eyebrow="Calendar"
         title={view === 'day' ? formatLocalDate(anchor) : `${formatLocalDate(from)} – ${formatLocalDate(to)}`}
         actions={
           <>
@@ -76,15 +121,17 @@ export default function CalendarPage() {
                 size="sm"
                 className="rounded-r-none"
                 aria-label={view === 'day' ? 'Previous day' : 'Previous week'}
+                aria-keyshortcuts="ArrowLeft"
                 onClick={() => setAnchor(addDays(anchor, -step))}
               >
-                ‹
+                <ChevronLeft />
               </Button>
               <Button
                 variant="secondary"
                 size="sm"
                 className="-ml-px rounded-none"
                 disabled={isToday}
+                aria-keyshortcuts="T"
                 onClick={() => setAnchor(todayIn(timeZone))}
               >
                 Today
@@ -94,9 +141,10 @@ export default function CalendarPage() {
                 size="sm"
                 className="-ml-px rounded-l-none"
                 aria-label={view === 'day' ? 'Next day' : 'Next week'}
+                aria-keyshortcuts="ArrowRight"
                 onClick={() => setAnchor(addDays(anchor, step))}
               >
-                ›
+                <ChevronRight />
               </Button>
             </div>
           </>
@@ -130,10 +178,7 @@ export default function CalendarPage() {
           from={from}
           bookings={list}
           timeZone={timeZone}
-          onOpenDay={(day) => {
-            setAnchor(day);
-            setView('day');
-          }}
+          onOpen={(day, bookingId) => setUrl({ view: null, date: day, booking: bookingId ?? null })}
         />
       )}
     </div>
@@ -264,9 +309,9 @@ function DayGrid({
                       type="button"
                       onClick={() => onSelect(booking.id)}
                       aria-pressed={selectedId === booking.id}
-                      className={`absolute inset-x-1 overflow-hidden rounded-sm border-l-[3px] px-2 py-0.5 text-left text-xs transition-shadow ${tone} ${
+                      className={`absolute inset-x-1 overflow-hidden rounded-sm border-l-[3px] px-2 py-0.5 text-left text-xs transition-shadow duration-150 ${tone} ${
                         cancelled ? 'z-0 opacity-70' : 'z-[1]'
-                      } ${selectedId === booking.id ? 'ring-2 ring-ink ring-offset-1' : 'hover:brightness-[0.97]'}`}
+                      } ${selectedId === booking.id ? 'z-[3] ring-2 ring-ink ring-offset-1' : 'hover:z-[3] hover:shadow-[0_4px_12px_-4px_rgba(23,22,15,0.3)]'}`}
                       style={{ top: top + 1, height: blockHeight - 2 }}
                     >
                       {blockHeight < 40 ? (
@@ -321,6 +366,7 @@ function BookingDetail({
   onClose(): void;
 }) {
   const toast = useToast();
+  const confirm = useConfirm();
   const queryClient = useQueryClient();
   const action = useMutation({
     mutationFn: (kind: 'complete' | 'no-show' | 'cancel') =>
@@ -337,107 +383,134 @@ function BookingDetail({
 
   if (!booking) {
     return (
-      <div className="hidden rounded-lg border border-dashed border-line-strong p-5 text-sm text-ink-muted xl:block">
+      <div className="hidden self-start rounded-lg border border-dashed border-line-strong p-5 text-sm text-ink-muted xl:block">
         Select a booking to see the customer&apos;s details and mark it done.
+        <p className="mt-3 flex flex-wrap items-center gap-1.5 text-xs text-ink-faint">
+          <kbd>&larr;</kbd>
+          <kbd>&rarr;</kbd> change day, <kbd>T</kbd> today
+        </p>
       </div>
     );
   }
 
   const started = new Date(booking.startsAt).getTime() <= Date.now();
   return (
-    <aside
-      aria-label="Booking details"
-      className="self-start rounded-lg border border-line bg-surface xl:sticky xl:top-6"
-    >
-      <div className="flex items-start justify-between gap-3 border-b border-line px-5 py-4">
-        <div>
-          <p className="num text-sm text-ink-muted">
-            {formatTime(booking.startsAt, timeZone)} – {formatTime(booking.endsAt, timeZone)}
-          </p>
-          <p className="mt-0.5 text-lg font-medium leading-snug">{booking.customerName}</p>
+    <>
+      <button
+        type="button"
+        aria-hidden="true"
+        tabIndex={-1}
+        onClick={onClose}
+        className="fixed inset-0 z-40 animate-fade-in bg-ink/30 xl:hidden"
+      />
+      <aside
+        key={booking.id}
+        aria-label="Booking details"
+        className="fixed inset-y-0 right-0 z-50 w-[min(360px,100vw)] animate-drawer-in overflow-y-auto border-l border-line bg-surface xl:sticky xl:inset-auto xl:top-6 xl:z-auto xl:w-auto xl:animate-fade-in xl:self-start xl:overflow-visible xl:rounded-lg xl:border"
+      >
+        <div className="flex items-start justify-between gap-3 border-b border-line px-5 py-4">
+          <div>
+            <p className="num text-sm text-ink-muted">
+              {formatTime(booking.startsAt, timeZone)} – {formatTime(booking.endsAt, timeZone)}
+            </p>
+            <p className="mt-0.5 text-lg font-medium leading-snug">{booking.customerName}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="-mr-2 -mt-1 grid h-8 w-8 place-items-center rounded-md text-ink-muted transition-colors hover:bg-ink/[0.06] hover:text-ink"
+            aria-label="Close details"
+          >
+            <Close />
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="text-ink-muted hover:text-ink"
-          aria-label="Close details"
-        >
-          ×
-        </button>
-      </div>
-      <dl className="space-y-2.5 px-5 py-4 text-sm">
-        <div className="flex justify-between gap-3">
-          <dt className="text-ink-muted">Service</dt>
-          <dd className="text-right">{booking.serviceName}</dd>
-        </div>
-        <div className="flex justify-between gap-3">
-          <dt className="text-ink-muted">With</dt>
-          <dd>{booking.staffName}</dd>
-        </div>
-        <div className="flex justify-between gap-3">
-          <dt className="text-ink-muted">Price</dt>
-          <dd className="num">{formatPeso(booking.priceCentavos)}</dd>
-        </div>
-        <div className="flex justify-between gap-3">
-          <dt className="text-ink-muted">Status</dt>
-          <dd>
-            <Badge value={booking.status} />
-          </dd>
-        </div>
-        {booking.customerPhone && (
+        <dl className="space-y-2.5 px-5 py-4 text-sm">
           <div className="flex justify-between gap-3">
-            <dt className="text-ink-muted">Phone</dt>
+            <dt className="text-ink-muted">Service</dt>
+            <dd className="text-right">{booking.serviceName}</dd>
+          </div>
+          <div className="flex justify-between gap-3">
+            <dt className="text-ink-muted">With</dt>
+            <dd>{booking.staffName}</dd>
+          </div>
+          <div className="flex justify-between gap-3">
+            <dt className="text-ink-muted">Price</dt>
+            <dd className="num">{formatPeso(booking.priceCentavos)}</dd>
+          </div>
+          <div className="flex justify-between gap-3">
+            <dt className="text-ink-muted">Status</dt>
             <dd>
-              <a href={`tel:${booking.customerPhone}`} className="num underline underline-offset-2">
-                {booking.customerPhone}
-              </a>
+              <Badge value={booking.status} />
             </dd>
           </div>
-        )}
-        <div className="flex justify-between gap-3">
-          <dt className="text-ink-muted">Email</dt>
-          <dd className="truncate">{booking.customerEmail}</dd>
-        </div>
-        {booking.notes && (
-          <div className="border-l-2 border-marigold-400 bg-marigold-100/50 px-3 py-2 text-ink-2">
-            {booking.notes}
+          {booking.customerPhone && (
+            <div className="flex justify-between gap-3">
+              <dt className="text-ink-muted">Phone</dt>
+              <dd>
+                <a
+                  href={`tel:${booking.customerPhone}`}
+                  className="num inline-flex items-center gap-1 underline underline-offset-2 hover:text-pine-600"
+                >
+                  <Phone className="h-3 w-3" />
+                  {booking.customerPhone}
+                </a>
+              </dd>
+            </div>
+          )}
+          <div className="flex justify-between gap-3">
+            <dt className="text-ink-muted">Email</dt>
+            <dd className="truncate">{booking.customerEmail}</dd>
+          </div>
+          {booking.notes && (
+            <div className="border-l-2 border-marigold-400 bg-marigold-100/50 px-3 py-2 text-ink-2">
+              {booking.notes}
+            </div>
+          )}
+          {booking.cancelledReason && <p className="text-ink-muted">{booking.cancelledReason}</p>}
+        </dl>
+        {booking.status === 'CONFIRMED' && (
+          <div className="flex flex-wrap gap-2 border-t border-line px-5 py-4">
+            <Button
+              size="sm"
+              onClick={() => action.mutate('complete')}
+              loading={action.isPending && action.variables === 'complete'}
+            >
+              Mark done
+            </Button>
+            {started && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => action.mutate('no-show')}
+                disabled={action.isPending}
+                loading={action.isPending && action.variables === 'no-show'}
+              >
+                No-show
+              </Button>
+            )}
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={async () => {
+                const ok = await confirm({
+                  title: `Cancel ${booking.customerName}'s booking?`,
+                  body: `${booking.serviceName} at ${formatTime(booking.startsAt, timeZone)}. The customer gets an email and the time opens up for others.`,
+                  confirmLabel: 'Cancel booking',
+                  danger: true,
+                });
+                if (ok) {
+                  action.mutate('cancel');
+                }
+              }}
+              disabled={action.isPending}
+              loading={action.isPending && action.variables === 'cancel'}
+            >
+              Cancel
+            </Button>
           </div>
         )}
-        {booking.cancelledReason && <p className="text-ink-muted">{booking.cancelledReason}</p>}
-      </dl>
-      {booking.status === 'CONFIRMED' && (
-        <div className="flex flex-wrap gap-2 border-t border-line px-5 py-4">
-          <Button
-            size="sm"
-            onClick={() => action.mutate('complete')}
-            loading={action.isPending && action.variables === 'complete'}
-          >
-            Mark done
-          </Button>
-          {started && (
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => action.mutate('no-show')}
-              disabled={action.isPending}
-            >
-              No-show
-            </Button>
-          )}
-          <Button
-            variant="danger"
-            size="sm"
-            onClick={() =>
-              window.confirm('Cancel this booking? The customer will get an email.') &&
-              action.mutate('cancel')
-            }
-            disabled={action.isPending}
-          >
-            Cancel
-          </Button>
-        </div>
-      )}
-    </aside>
+      </aside>
+    </>
   );
 }
 
@@ -445,12 +518,12 @@ function WeekAgenda({
   from,
   bookings,
   timeZone,
-  onOpenDay,
+  onOpen,
 }: {
   from: string;
   bookings: Booking[];
   timeZone: string;
-  onOpenDay(day: string): void;
+  onOpen(day: string, bookingId?: string): void;
 }) {
   const days = Array.from({ length: 7 }, (_, i) => addDays(from, i));
   return (
@@ -468,8 +541,8 @@ function WeekAgenda({
           >
             <button
               type="button"
-              onClick={() => onOpenDay(day)}
-              className="flex w-full items-baseline justify-between border-b border-line px-3 py-2 text-left hover:bg-paper"
+              onClick={() => onOpen(day)}
+              className="flex w-full items-baseline justify-between border-b border-line px-3 py-2 text-left transition-colors hover:bg-pine-50/60"
             >
               <span className="text-xs text-ink-muted">
                 {new Intl.DateTimeFormat('en-PH', { weekday: 'short', timeZone: 'UTC' }).format(
@@ -481,12 +554,19 @@ function WeekAgenda({
             <ul className="space-y-px p-1.5">
               {dayBookings.length === 0 && <li className="px-1.5 py-1 text-xs text-ink-faint">Free</li>}
               {dayBookings.map((booking) => (
-                <li key={booking.id} className="rounded-sm px-1.5 py-1 text-xs hover:bg-paper">
-                  <span className="num text-ink-muted">{formatTime(booking.startsAt, timeZone)}</span>{' '}
-                  <span className="text-ink">{booking.customerName}</span>
-                  <span className="block truncate text-ink-faint">
-                    {booking.serviceName} · {booking.staffName.split(' ')[0]}
-                  </span>
+                <li key={booking.id}>
+                  <button
+                    type="button"
+                    onClick={() => onOpen(day, booking.id)}
+                    className="w-full rounded-sm px-1.5 py-1 text-left text-xs transition-colors hover:bg-pine-50/60"
+                  >
+                    <span className="num text-ink-muted">{formatTime(booking.startsAt, timeZone)}</span>{' '}
+                    <span className="text-ink">{booking.customerName}</span>
+                    <span className="block truncate text-ink-faint">{booking.serviceName}</span>
+                    <span className="block truncate text-ink-faint">
+                      with {booking.staffName.split(' ')[0]}
+                    </span>
+                  </button>
                 </li>
               ))}
             </ul>

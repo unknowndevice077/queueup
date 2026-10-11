@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { addDays } from '@/lib/format';
+import { ChevronLeft, ChevronRight } from './icons';
 
 interface DateCalendarProps {
   /** Selected date as YYYY-MM-DD. */
@@ -49,7 +50,7 @@ export function DateCalendar({ value, onChange, today, maxDaysAhead = 60 }: Date
     });
 
   const navButton =
-    'grid h-8 w-8 place-items-center rounded-md border border-line-strong text-ink-2 hover:bg-paper disabled:border-line disabled:text-ink-faint';
+    'grid h-8 w-8 place-items-center rounded-md border border-line-strong text-ink-2 transition-colors hover:border-ink-faint hover:bg-paper active:translate-y-px disabled:pointer-events-none disabled:border-line disabled:text-ink-faint';
 
   return (
     <div className="w-full max-w-[360px]">
@@ -65,7 +66,7 @@ export function DateCalendar({ value, onChange, today, maxDaysAhead = 60 }: Date
             aria-label="Previous month"
             className={navButton}
           >
-            ‹
+            <ChevronLeft />
           </button>
           <button
             type="button"
@@ -74,7 +75,7 @@ export function DateCalendar({ value, onChange, today, maxDaysAhead = 60 }: Date
             aria-label="Next month"
             className={navButton}
           >
-            ›
+            <ChevronRight />
           </button>
         </div>
       </div>
@@ -87,7 +88,7 @@ export function DateCalendar({ value, onChange, today, maxDaysAhead = 60 }: Date
           <div
             key={index}
             role="columnheader"
-            className="border-b border-r border-line py-1.5 text-center font-mono text-2xs text-ink-muted"
+            className="border-b border-r border-line py-1.5 text-center text-xs text-ink-muted"
           >
             {day}
           </div>
@@ -119,7 +120,7 @@ export function DateCalendar({ value, onChange, today, maxDaysAhead = 60 }: Date
               }).format(new Date(`${date}T00:00:00Z`))}
               onClick={() => onChange(date)}
               className={`relative aspect-square border-b border-r border-line text-left align-top font-mono text-[13px] transition-colors disabled:cursor-not-allowed disabled:bg-paper/60 disabled:text-ink-faint ${
-                selected ? 'bg-ink text-paper' : 'text-ink hover:bg-pine-50'
+                selected ? 'bg-pine-600 font-medium text-white' : 'text-ink hover:bg-pine-50'
               }`}
             >
               <span className="absolute left-1.5 top-1">{Number(date.slice(8))}</span>

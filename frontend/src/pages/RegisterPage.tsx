@@ -68,7 +68,7 @@ export function RegisterPage() {
       }
       aside={
         <div className="text-sm text-ink-2">
-          <p className="eyebrow">What you get</p>
+          <p className="caption">What you get</p>
           <ul className="mt-3 space-y-3">
             <li>Book at any QueueUp business with the same account.</li>
             <li>See, move or cancel your appointments in one list.</li>

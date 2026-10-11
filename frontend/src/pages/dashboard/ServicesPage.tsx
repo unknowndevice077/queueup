@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -7,7 +7,8 @@ import { api } from '@/lib/api';
 import { formatDuration, formatPeso } from '@/lib/format';
 import { queryKeys } from '@/lib/queries';
 import type { Service } from '@/lib/types';
-import { Badge, Button, EmptyState, ErrorState, Field, PageHeader, SkeletonList } from '@/components/ui';
+import { Button, EmptyState, ErrorState, Field, PageHeader, SkeletonList, Switch } from '@/components/ui';
+import { Plus } from '@/components/icons';
 import { useToast } from '@/components/Toaster';
 import { useDashboard } from './DashboardLayout';
 
@@ -61,12 +62,12 @@ export default function ServicesPage() {
   return (
     <div>
       <PageHeader
-        eyebrow="Set up"
         title="Services"
         description="What customers can book. Clean-up time is blocked after each booking so you're never rushed."
         actions={
           editing === null && (
             <Button variant="ink" onClick={() => setEditing('new')}>
+              <Plus />
               Add service
             </Button>
           )
@@ -87,16 +88,25 @@ export default function ServicesPage() {
       ) : error ? (
         <ErrorState error={error} onRetry={() => refetch()} />
       ) : services.length === 0 ? (
-        <EmptyState title="No services yet">Add your first service so customers can book it.</EmptyState>
+        <EmptyState
+          title="No services yet"
+          action={
+            <Button variant="ink" onClick={() => setEditing('new')}>
+              Add your first service
+            </Button>
+          }
+        >
+          Customers can only book what is listed here.
+        </EmptyState>
       ) : (
         <div className="overflow-x-auto rounded-lg border border-line bg-surface">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-line text-left">
-                <th className="eyebrow px-4 py-2.5 font-medium">Service</th>
-                <th className="eyebrow px-4 py-2.5 font-medium">Time</th>
-                <th className="eyebrow px-4 py-2.5 text-right font-medium">Price</th>
-                <th className="eyebrow px-4 py-2.5 font-medium">Status</th>
+                <th className="caption px-4 py-2.5">Service</th>
+                <th className="caption px-4 py-2.5">Time</th>
+                <th className="caption px-4 py-2.5 text-right">Price</th>
+                <th className="caption px-4 py-2.5">Bookable</th>
                 <th className="px-4 py-2.5">
                   <span className="sr-only">Actions</span>
                 </th>
@@ -119,18 +129,23 @@ export default function ServicesPage() {
                     </td>
                   </tr>
                 ) : (
-                  <tr key={service.id} className={service.active ? '' : 'text-ink-muted'}>
+                  <tr
+                    key={service.id}
+                    className={`transition-colors hover:bg-paper/50 ${service.active ? '' : 'text-ink-muted'}`}
+                  >
                     <td className="px-4 py-3">
-                      <p className="font-medium text-ink">{service.name}</p>
+                      <p className={`font-medium ${service.active ? 'text-ink' : 'text-ink-muted'}`}>
+                        {service.name}
+                      </p>
                       {service.description && (
                         <p className="text-[13px] text-ink-muted">{service.description}</p>
                       )}
                     </td>
-                    <td className="num whitespace-nowrap px-4 py-3">
-                      {formatDuration(service.durationMinutes)}
+                    <td className="whitespace-nowrap px-4 py-3">
+                      <span className="num">{formatDuration(service.durationMinutes)}</span>
                       {service.bufferMinutes > 0 && (
                         <span className="block text-xs text-ink-faint">
-                          +{service.bufferMinutes} min clean-up
+                          plus {service.bufferMinutes} min clean-up
                         </span>
                       )}
                     </td>
@@ -138,21 +153,17 @@ export default function ServicesPage() {
                       {formatPeso(service.priceCentavos)}
                     </td>
                     <td className="px-4 py-3">
-                      <Badge
-                        value={service.active ? 'CONFIRMED' : 'DONE'}
-                        label={service.active ? 'Bookable' : 'Hidden'}
+                      <Switch
+                        id={`active-${service.id}`}
+                        checked={service.active}
+                        disabled={setActive.isPending && setActive.variables?.service.id === service.id}
+                        onChange={(event) => setActive.mutate({ service, active: event.target.checked })}
+                        label={<span className="sr-only">{service.name} is bookable</span>}
                       />
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-right">
-                      <Button size="sm" variant="ghost" onClick={() => setEditing(service)}>
-                        Edit
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => setActive.mutate({ service, active: !service.active })}
-                      >
-                        {service.active ? 'Hide' : 'Show'}
+                      <Button size="sm" variant="secondary" onClick={() => setEditing(service)}>
+                        Edit<span className="sr-only"> {service.name}</span>
                       </Button>
                     </td>
                   </tr>
@@ -181,6 +192,7 @@ function ServiceEditor({
   const {
     register,
     handleSubmit,
+    setFocus,
     formState: { errors, isSubmitting },
   } = useForm<ServiceForm>({
     resolver: zodResolver(schema),
@@ -192,6 +204,8 @@ function ServiceEditor({
       pricePesos: service ? service.priceCentavos / 100 : 0,
     },
   });
+
+  useEffect(() => setFocus('name'), [setFocus]);
 
   const onSubmit = async (values: ServiceForm) => {
     const body = {
@@ -219,7 +233,9 @@ function ServiceEditor({
     <form
       onSubmit={handleSubmit(onSubmit)}
       noValidate
-      className={embedded ? 'p-4' : 'mb-6 rounded-lg border border-ink bg-surface p-5'}
+      className={
+        embedded ? 'animate-fade-in p-4' : 'mb-6 animate-fade-in rounded-lg border border-ink bg-surface p-5'
+      }
     >
       {!embedded && <h2 className="mb-4 font-medium">New service</h2>}
       <div className="grid gap-4 sm:grid-cols-[2fr,1fr,1fr,1fr]">
@@ -257,7 +273,7 @@ function ServiceEditor({
       </div>
       <div className="mt-4 flex gap-2">
         <Button type="submit" loading={isSubmitting}>
-          {service ? 'Save' : 'Add service'}
+          {service ? 'Save changes' : 'Add service'}
         </Button>
         <Button type="button" variant="ghost" onClick={onDone}>
           Cancel

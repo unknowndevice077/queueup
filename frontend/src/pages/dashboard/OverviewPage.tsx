@@ -1,6 +1,6 @@
 import { useState, type ReactElement } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Bar,
   BarChart,
@@ -40,6 +40,7 @@ const AXIS = { fontSize: 11, fill: MUTED, fontFamily: 'IBM Plex Mono, monospace'
 
 export default function OverviewPage() {
   const { slug, role, settings } = useDashboard();
+  const navigate = useNavigate();
   const today = todayIn(settings.timezone);
 
   const todaysBookings = useQuery({
@@ -59,7 +60,7 @@ export default function OverviewPage() {
 
   return (
     <div>
-      <PageHeader eyebrow={settings.name} title={formatLocalDate(today)} />
+      <PageHeader title={formatLocalDate(today)} description={settings.name} />
 
       <StatStrip
         items={[
@@ -73,7 +74,7 @@ export default function OverviewPage() {
             ) : (
               '—'
             ),
-            note: next ? `${next.customerName} · ${next.serviceName}` : undefined,
+            note: next ? `${next.customerName}, ${next.serviceName}` : undefined,
           },
           { label: 'Walk-ins waiting', value: loading ? <Skeleton className="h-6 w-10" /> : waiting.length },
           {
@@ -90,14 +91,14 @@ export default function OverviewPage() {
       <div className="mt-8 grid gap-8 xl:grid-cols-[1fr,300px]">
         <section aria-labelledby="today-heading">
           <div className="mb-3 flex items-baseline justify-between">
-            <h2 id="today-heading" className="eyebrow">
+            <h2 id="today-heading" className="font-semibold">
               Today&apos;s appointments
             </h2>
             <Link
               to="calendar"
               className="text-[13px] text-ink-muted underline-offset-2 hover:text-ink hover:underline"
             >
-              Open calendar →
+              Open calendar
             </Link>
           </div>
           {todaysBookings.isLoading ? (
@@ -105,26 +106,38 @@ export default function OverviewPage() {
           ) : todaysBookings.error ? (
             <ErrorState error={todaysBookings.error} />
           ) : active.length === 0 ? (
-            <EmptyState title="No appointments today" />
+            <EmptyState title="No appointments today">
+              Bookings made on your booking page show up here.
+            </EmptyState>
           ) : (
             <div className="overflow-x-auto rounded-lg border border-line bg-surface">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-line text-left">
-                    <th className="eyebrow w-20 px-4 py-2.5 font-medium">Time</th>
-                    <th className="eyebrow px-4 py-2.5 font-medium">Customer</th>
-                    <th className="eyebrow hidden px-4 py-2.5 font-medium sm:table-cell">With</th>
-                    <th className="eyebrow px-4 py-2.5 text-right font-medium">Status</th>
+                    <th className="caption w-20 px-4 py-2.5">Time</th>
+                    <th className="caption px-4 py-2.5">Customer</th>
+                    <th className="caption hidden px-4 py-2.5 sm:table-cell">With</th>
+                    <th className="caption px-4 py-2.5 text-right">Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-line">
                   {active.map((booking) => (
-                    <tr key={booking.id} className={booking.status === 'COMPLETED' ? 'text-ink-muted' : ''}>
+                    <tr
+                      key={booking.id}
+                      onClick={() => navigate(`calendar?booking=${booking.id}`)}
+                      className={`row-action ${booking.status === 'COMPLETED' ? 'text-ink-muted' : ''}`}
+                    >
                       <td className="num whitespace-nowrap px-4 py-2.5">
                         {formatTime(booking.startsAt, settings.timezone)}
                       </td>
                       <td className="px-4 py-2.5">
-                        <span className="font-medium text-ink">{booking.customerName}</span>
+                        <Link
+                          to={`calendar?booking=${booking.id}`}
+                          onClick={(event) => event.stopPropagation()}
+                          className="font-medium text-ink hover:underline hover:underline-offset-2"
+                        >
+                          {booking.customerName}
+                        </Link>
                         <span className="block text-[13px] text-ink-muted">{booking.serviceName}</span>
                       </td>
                       <td className="hidden px-4 py-2.5 text-ink-2 sm:table-cell">{booking.staffName}</td>
@@ -141,14 +154,14 @@ export default function OverviewPage() {
 
         <section aria-labelledby="queue-heading">
           <div className="mb-3 flex items-baseline justify-between">
-            <h2 id="queue-heading" className="eyebrow">
+            <h2 id="queue-heading" className="font-semibold">
               Walk-ins right now
             </h2>
             <Link
               to="queue"
               className="text-[13px] text-ink-muted underline-offset-2 hover:text-ink hover:underline"
             >
-              Console →
+              Open counter
             </Link>
           </div>
           <div className="rounded-lg border border-line bg-surface">
@@ -160,7 +173,7 @@ export default function OverviewPage() {
             </div>
             <ul className="divide-y divide-line text-sm">
               {waiting.slice(0, 5).map((entry) => (
-                <li key={entry.id} className="flex items-center justify-between px-4 py-2">
+                <li key={entry.id} className="flex items-center justify-between px-4 py-2 animate-fade-in">
                   <span className="num">{ticketLabel(entry.ticketNumber)}</span>
                   <span className="truncate pl-3 text-ink-muted">{entry.customerName}</span>
                 </li>
@@ -219,8 +232,8 @@ function Performance({ slug, today }: { slug: string; today: string }) {
           <h2 id="performance-heading" className="text-lg font-semibold">
             How the shop is doing
           </h2>
-          <p className="num text-[13px] text-ink-muted">
-            {from} → {today}
+          <p className="text-[13px] text-ink-muted">
+            {formatLocalDate(from)} to {formatLocalDate(today)}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -229,9 +242,9 @@ function Performance({ slug, today }: { slug: string; today: string }) {
             value={days}
             onChange={setDays}
             options={[
-              { value: 7, label: '7d' },
-              { value: 30, label: '30d' },
-              { value: 60, label: '60d' },
+              { value: 7, label: '7 days' },
+              { value: 30, label: '30 days' },
+              { value: 60, label: '60 days' },
             ]}
           />
           <Button variant="secondary" size="sm" loading={exporting} onClick={exportCsv}>
@@ -357,7 +370,7 @@ function Performance({ slug, today }: { slug: string; today: string }) {
 
           {data && data.topServices.length > 0 && (
             <div className="mt-4 rounded-lg border border-line bg-surface p-5">
-              <h3 className="eyebrow">Most booked services</h3>
+              <h3 className="font-semibold">Most booked services</h3>
               <ul className="mt-4 space-y-3">
                 {data.topServices.map((service) => (
                   <li
@@ -367,12 +380,12 @@ function Performance({ slug, today }: { slug: string; today: string }) {
                     <span className="truncate">{service.name}</span>
                     <span className="col-span-2 row-start-2 h-1.5 bg-line sm:col-span-1 sm:row-start-auto">
                       <span
-                        className="block h-full bg-pine-600"
+                        className="block h-full origin-left animate-[bar-grow_700ms_cubic-bezier(0.22,1,0.36,1)_both] bg-pine-600"
                         style={{ width: `${(service.bookings / topTotal) * 100}%` }}
                       />
                     </span>
                     <span className="num text-right text-ink-muted">
-                      {service.bookings} · {formatPeso(service.revenueCentavos)}
+                      {service.bookings} booked, {formatPeso(service.revenueCentavos)}
                     </span>
                   </li>
                 ))}
@@ -399,7 +412,7 @@ function ChartPanel({
   return (
     <figure className="rounded-lg border border-line bg-surface p-5">
       <figcaption className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
-        <span className="eyebrow">{title}</span>
+        <span className="text-sm font-semibold text-ink">{title}</span>
         {legend && (
           <span className="flex gap-3 text-xs text-ink-muted">
             {legend.map(([color, label]) => (

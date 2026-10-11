@@ -1,7 +1,9 @@
 import { Link } from 'react-router-dom';
+import { useConfirm } from '@/components/Dialog';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { formatDate, formatDateTime, formatPeso, formatTime } from '@/lib/format';
+import { buttonClass } from '@/components/ui';
 import { queryKeys } from '@/lib/queries';
 import type { Booking, Page, PaymentIntent } from '@/lib/types';
 import { Badge, Button, EmptyState, ErrorState, PageHeader, SkeletonList } from '@/components/ui';
@@ -30,16 +32,19 @@ export function MyBookingsPage() {
       ) : (
         <>
           <section aria-labelledby="upcoming-heading">
-            <h2 id="upcoming-heading" className="eyebrow">
+            <h2 id="upcoming-heading" className="font-semibold">
               Coming up
             </h2>
             {upcoming.length === 0 ? (
               <div className="mt-3">
-                <EmptyState title="Nothing booked yet">
-                  <Link to="/b/kanto-cuts" className="font-medium text-ink underline underline-offset-4">
-                    Book a haircut at Kanto Cuts
-                  </Link>
-                </EmptyState>
+                <EmptyState
+                  title="Nothing booked yet"
+                  action={
+                    <Link to="/b/kanto-cuts" className={buttonClass('primary', 'md')}>
+                      Book a haircut at Kanto Cuts
+                    </Link>
+                  }
+                />
               </div>
             ) : (
               <ul className="mt-3 space-y-3">
@@ -51,7 +56,7 @@ export function MyBookingsPage() {
           </section>
 
           <section aria-labelledby="past-heading" className="mt-12">
-            <h2 id="past-heading" className="eyebrow">
+            <h2 id="past-heading" className="font-semibold">
               History
             </h2>
             {past.length === 0 ? (
@@ -85,6 +90,7 @@ export function MyBookingsPage() {
 
 function UpcomingBooking({ booking }: { booking: Booking }) {
   const toast = useToast();
+  const confirm = useConfirm();
   const queryClient = useQueryClient();
   const canChange = new Date(booking.customerChangeDeadline).getTime() > Date.now();
 
@@ -108,7 +114,7 @@ function UpcomingBooking({ booking }: { booking: Booking }) {
   });
 
   return (
-    <li className="grid overflow-hidden rounded-md border border-line bg-surface sm:grid-cols-[132px,1fr]">
+    <li className="grid animate-fade-in overflow-hidden rounded-md border border-line bg-surface sm:grid-cols-[132px,1fr]">
       <div className="flex items-baseline gap-3 border-b border-line bg-paper/60 px-4 py-3 sm:block sm:border-b-0 sm:border-r">
         <p className="text-[13px] text-ink-muted">{formatDate(booking.startsAt, booking.timezone)}</p>
         <p className="num text-[22px] font-medium leading-tight sm:mt-1">
@@ -120,9 +126,9 @@ function UpcomingBooking({ booking }: { booking: Booking }) {
           <div>
             <p className="font-medium">{booking.serviceName}</p>
             <p className="text-sm text-ink-muted">
-              {booking.tenantName} · with {booking.staffName} ·{' '}
-              <span className="num">{formatPeso(booking.priceCentavos)}</span>
+              {booking.tenantName}, with {booking.staffName}
             </p>
+            <p className="num text-sm text-ink-muted">{formatPeso(booking.priceCentavos)}</p>
           </div>
           <Badge value={booking.status} />
         </div>
@@ -136,7 +142,7 @@ function UpcomingBooking({ booking }: { booking: Booking }) {
             <>
               <Link
                 to={`/b/${booking.tenantSlug}/book?service=${booking.serviceId}&reschedule=${booking.id}`}
-                className="inline-flex h-8 items-center rounded-md border border-line-strong bg-surface px-3 text-[13px] font-medium hover:border-ink-faint"
+                className={buttonClass('secondary', 'sm')}
               >
                 Move
               </Link>
@@ -144,12 +150,15 @@ function UpcomingBooking({ booking }: { booking: Booking }) {
                 size="sm"
                 variant="danger"
                 loading={cancel.isPending}
-                onClick={() => {
-                  if (
-                    window.confirm(
-                      `Cancel ${booking.serviceName} on ${formatDateTime(booking.startsAt, booking.timezone)}?`,
-                    )
-                  ) {
+                onClick={async () => {
+                  const ok = await confirm({
+                    title: `Cancel your ${booking.serviceName}?`,
+                    body: `${formatDateTime(booking.startsAt, booking.timezone)} at ${booking.tenantName}. The time goes back to other customers.`,
+                    confirmLabel: 'Cancel booking',
+                    cancelLabel: 'Keep booking',
+                    danger: true,
+                  });
+                  if (ok) {
                     cancel.mutate();
                   }
                 }}

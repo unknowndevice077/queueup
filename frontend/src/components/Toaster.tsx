@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
+import { Close } from './icons';
 
 type ToastKind = 'success' | 'error' | 'info';
 
@@ -56,17 +57,17 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           <div
             key={toast.id}
             role={toast.kind === 'error' ? 'alert' : 'status'}
-            className="pointer-events-auto flex w-full max-w-sm items-stretch overflow-hidden rounded-md bg-ink text-[14px] text-paper"
+            className="pointer-events-auto flex w-full max-w-sm animate-fade-in items-stretch overflow-hidden rounded-md bg-ink text-[14px] text-paper shadow-[0_12px_32px_-12px_rgba(23,22,15,0.5)]"
           >
             <span aria-hidden="true" className={`w-1 shrink-0 ${accent[toast.kind]}`} />
             <p className="flex-1 px-3.5 py-3">{toast.message}</p>
             <button
               type="button"
               onClick={() => dismiss(toast.id)}
-              className="px-3 text-paper/60 hover:text-paper"
+              className="grid w-10 place-items-center text-paper/50 transition-colors hover:bg-paper/10 hover:text-paper"
               aria-label="Dismiss"
             >
-              ×
+              <Close className="h-3.5 w-3.5" />
             </button>
           </div>
         ))}

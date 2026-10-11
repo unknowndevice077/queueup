@@ -42,7 +42,7 @@ function detailText(details?: Record<string, unknown>): string {
   return Object.entries(details)
     .filter(([key]) => !key.toLowerCase().endsWith('id') && key !== 'serviceIds')
     .map(([key, value]) => `${key.replace(/([A-Z])/g, ' $1').toLowerCase()}: ${String(value)}`)
-    .join(' · ');
+    .join('; ');
 }
 
 export default function AuditLogPage() {
@@ -70,7 +70,6 @@ export default function AuditLogPage() {
   return (
     <div>
       <PageHeader
-        eyebrow="Set up"
         title="Activity log"
         description="Every change to bookings, the team, services, settings and the queue."
       />
@@ -88,7 +87,7 @@ export default function AuditLogPage() {
             return (
               <li key={entry.id}>
                 {newDay && (
-                  <p className={`eyebrow bg-paper/70 px-5 py-2 ${index > 0 ? 'border-t border-line' : ''}`}>
+                  <p className={`caption bg-paper/70 px-5 py-2 ${index > 0 ? 'border-t border-line' : ''}`}>
                     {formatDate(entry.createdAt, tz)}
                   </p>
                 )}

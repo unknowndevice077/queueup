@@ -57,6 +57,62 @@ export default {
       letterSpacing: {
         label: '0.08em',
       },
+      transitionTimingFunction: {
+        out: 'cubic-bezier(0.22, 1, 0.36, 1)',
+      },
+      keyframes: {
+        'fade-in': {
+          from: { opacity: '0', transform: 'translateY(6px)' },
+          to: { opacity: '1', transform: 'none' },
+        },
+        'dialog-in': {
+          from: { opacity: '0', transform: 'translateY(8px) scale(0.98)' },
+          to: { opacity: '1', transform: 'none' },
+        },
+        'drawer-in': {
+          from: { transform: 'translateX(100%)' },
+          to: { transform: 'none' },
+        },
+        'bar-up': {
+          from: { transform: 'translateY(100%)' },
+          to: { transform: 'none' },
+        },
+        // The ticket feeds out of the machine slot: revealed top-down while it drops into place.
+        'ticket-print': {
+          '0%': { clipPath: 'inset(0 0 100% 0)', transform: 'translateY(-28px)' },
+          '70%': { clipPath: 'inset(0 0 0 0)', transform: 'translateY(4px)' },
+          '100%': { clipPath: 'inset(0 0 0 0)', transform: 'none' },
+        },
+        nudge: {
+          '0%, 100%': { transform: 'none' },
+          '20%': { transform: 'rotate(-1.5deg)' },
+          '40%': { transform: 'rotate(1.5deg)' },
+          '60%': { transform: 'rotate(-0.75deg)' },
+          '80%': { transform: 'rotate(0.75deg)' },
+        },
+        flash: {
+          from: { backgroundColor: '#FBEFC8' },
+          to: { backgroundColor: 'transparent' },
+        },
+        'bar-grow': {
+          from: { transform: 'scaleX(0)' },
+          to: { transform: 'none' },
+        },
+        'number-in': {
+          from: { opacity: '0', transform: 'translateY(0.25em)' },
+          to: { opacity: '1', transform: 'none' },
+        },
+      },
+      animation: {
+        'fade-in': 'fade-in 220ms cubic-bezier(0.22, 1, 0.36, 1) both',
+        'dialog-in': 'dialog-in 200ms cubic-bezier(0.22, 1, 0.36, 1) both',
+        'drawer-in': 'drawer-in 260ms cubic-bezier(0.22, 1, 0.36, 1) both',
+        'bar-up': 'bar-up 240ms cubic-bezier(0.22, 1, 0.36, 1) both',
+        'ticket-print': 'ticket-print 900ms cubic-bezier(0.22, 1, 0.36, 1) both',
+        nudge: 'nudge 600ms ease-in-out 2',
+        flash: 'flash 1800ms ease-out both',
+        'number-in': 'number-in 420ms cubic-bezier(0.22, 1, 0.36, 1) both',
+      },
     },
   },
   plugins: [],

@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -9,7 +9,7 @@ import { queryKeys, usePublicQueue, usePublicTenant } from '@/lib/queries';
 import { useLiveQueue } from '@/lib/useLiveQueue';
 import { formatTime, ticketLabel, todayIn } from '@/lib/format';
 import type { PublicQueueState, QueueTicket } from '@/lib/types';
-import { Button, ErrorState, Field, Select, SkeletonList } from '@/components/ui';
+import { BackLink, Button, ErrorState, Field, Select, SkeletonList } from '@/components/ui';
 import { useToast } from '@/components/Toaster';
 
 const schema = z.object({
@@ -43,6 +43,7 @@ export function QueuePage() {
   const { state: liveState, connected } = useLiveQueue(slug);
   const state: PublicQueueState | undefined = liveState ?? initialState;
   const [ticket, setTicket] = useState<QueueTicket | null>(null);
+  const [justJoined, setJustJoined] = useState(false);
 
   useEffect(() => {
     if (tenant) {
@@ -69,30 +70,34 @@ export function QueuePage() {
 
   return (
     <div className="mx-auto max-w-md px-4 py-10 sm:py-14">
-      <Link to={`/b/${slug}`} className="text-sm text-ink-muted hover:text-ink">
-        ← {tenant.name}
-      </Link>
+      <BackLink to={`/b/${slug}`}>{tenant.name}</BackLink>
       <h1 className="mt-3 text-[28px] font-semibold tracking-[-0.015em]">Walk-in queue</h1>
 
       <div className="mt-5 grid grid-cols-2 divide-x divide-line rounded-md border border-line bg-surface">
         <div className="px-4 py-3">
-          <p className="eyebrow">Waiting</p>
-          <p className="num mt-1 text-2xl font-medium" aria-live="polite">
+          <p className="caption">Waiting</p>
+          <p
+            key={state?.waitingCount}
+            className="num mt-1 animate-number-in text-2xl font-medium"
+            aria-live="polite"
+          >
             {state?.waitingCount ?? 0}
           </p>
         </div>
         <div className="px-4 py-3">
-          <p className="eyebrow">At the counter</p>
+          <p className="caption">At the counter</p>
           <p className="num mt-1 text-2xl font-medium">
             {nowServing.length === 0 ? '—' : nowServing.map((e) => ticketLabel(e.ticketNumber)).join(' ')}
           </p>
         </div>
       </div>
       <p className="mt-2 flex items-center gap-1.5 text-xs text-ink-muted">
-        <span
-          aria-hidden="true"
-          className={`h-1.5 w-1.5 rounded-full ${connected ? 'bg-pine-500' : 'bg-ink-faint'}`}
-        />
+        <span aria-hidden="true" className="relative flex h-1.5 w-1.5">
+          {connected && (
+            <span className="absolute inset-0 animate-ping rounded-full bg-pine-500 opacity-60 motion-reduce:hidden" />
+          )}
+          <span className={`h-1.5 w-1.5 rounded-full ${connected ? 'bg-pine-500' : 'bg-ink-faint'}`} />
+        </span>
         {connected ? 'Live. Updates as staff call tickets.' : 'Connecting…'}
       </p>
 
@@ -102,6 +107,7 @@ export function QueuePage() {
           state={state}
           businessName={tenant.name}
           timeZone={tenant.timezone}
+          justJoined={justJoined}
           onLeave={() => {
             localStorage.removeItem(storageKey(slug));
             setTicket(null);
@@ -113,6 +119,7 @@ export function QueuePage() {
           services={tenant.services}
           onJoined={(t) => {
             localStorage.setItem(storageKey(slug), JSON.stringify(t));
+            setJustJoined(true);
             setTicket(t);
           }}
         />
@@ -197,12 +204,14 @@ function TicketCard({
   state,
   businessName,
   timeZone,
+  justJoined,
   onLeave,
 }: {
   ticket: QueueTicket;
   state: PublicQueueState | undefined;
   businessName: string;
   timeZone: string;
+  justJoined: boolean;
   onLeave(): void;
 }) {
   const live = state?.entries.find((e) => e.id === ticket.id);
@@ -210,6 +219,23 @@ function TicketCard({
   const position = live?.position ?? ticket.position;
   const yourTurn = status === 'CALLED' || status === 'SERVING';
   const ahead = Math.max(position - 1, 0);
+
+  // When the counter calls this ticket: buzz the phone once and put it in the tab title, so a customer who
+  // switched apps notices.
+  const wasCalled = useRef(yourTurn);
+  useEffect(() => {
+    if (yourTurn && !wasCalled.current) {
+      navigator.vibrate?.([200, 100, 200]);
+    }
+    wasCalled.current = yourTurn;
+    const previous = document.title;
+    if (yourTurn) {
+      document.title = `Your turn: ${ticketLabel(ticket.ticketNumber)}`;
+    }
+    return () => {
+      document.title = previous;
+    };
+  }, [yourTurn, ticket.ticketNumber]);
 
   const message = yourTurn
     ? 'Please go to the counter.'
@@ -223,28 +249,47 @@ function TicketCard({
 
   return (
     <div className="mt-8">
-      <div className={`ticket rounded-md ${yourTurn ? 'border-marigold-400' : ''}`}>
-        <div className="px-6 pb-5 pt-5">
-          <div className="flex items-baseline justify-between">
-            <p className="eyebrow">{businessName}</p>
-            <p className="num text-xs text-ink-muted">{formatTime(ticket.joinedAt, timeZone)}</p>
+      {/* The slot the ticket feeds out of. */}
+      <div aria-hidden="true" className="mx-3 h-2 rounded-full bg-ink" />
+      <div className="-mt-1 overflow-hidden px-5 pt-1">
+        <div
+          className={`ticket rounded-b-md transition-colors duration-500 ${justJoined ? 'animate-ticket-print' : ''} ${
+            yourTurn ? 'animate-nudge border-marigold-400' : ''
+          }`}
+        >
+          <div className="px-6 pb-5 pt-5">
+            <div className="flex items-baseline justify-between gap-3">
+              <p className="truncate text-sm font-medium">{businessName}</p>
+              <p className="num shrink-0 text-xs text-ink-muted">{formatTime(ticket.joinedAt, timeZone)}</p>
+            </div>
+            <p className="num mt-4 text-[72px] font-semibold leading-none tracking-[-0.03em]">
+              {ticketLabel(ticket.ticketNumber)}
+            </p>
+            <p className="mt-2 text-sm text-ink-muted">
+              {ticket.customerName}
+              {ticket.serviceName && <>, {ticket.serviceName}</>}
+            </p>
           </div>
-          <p className="num mt-4 text-[72px] font-semibold leading-none tracking-[-0.03em]">
-            {ticketLabel(ticket.ticketNumber)}
-          </p>
-          <p className="mt-2 text-sm text-ink-muted">
-            {ticket.customerName}
-            {ticket.serviceName && <> · {ticket.serviceName}</>}
-          </p>
-        </div>
-        <div className="ticket-tear" />
-        <div className={`px-6 py-4 ${yourTurn ? 'bg-marigold-100' : ''}`}>
-          <p className="text-lg font-medium" aria-live="assertive">
-            {message}
-          </p>
-          {status === 'WAITING' && (
-            <p className="mt-1 text-[13px] text-ink-muted">Keep this page open. It updates by itself.</p>
-          )}
+          <div className="ticket-tear" />
+          <div
+            className={`px-6 py-4 transition-colors duration-500 ${yourTurn ? 'bg-marigold-400 text-ink' : ''}`}
+          >
+            {status === 'WAITING' && ahead > 0 ? (
+              <p className="flex items-baseline gap-2" aria-live="assertive">
+                <span key={ahead} className="num animate-number-in text-3xl font-semibold">
+                  {ahead}
+                </span>
+                <span className="text-lg font-medium">{ahead === 1 ? 'person' : 'people'} ahead of you</span>
+              </p>
+            ) : (
+              <p className={`font-medium ${yourTurn ? 'text-xl' : 'text-lg'}`} aria-live="assertive">
+                {message}
+              </p>
+            )}
+            {status === 'WAITING' && (
+              <p className="mt-1 text-[13px] text-ink-muted">Keep this page open. It updates by itself.</p>
+            )}
+          </div>
         </div>
       </div>
       {(status === 'DONE' || status === 'SKIPPED') && (

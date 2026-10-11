@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { buttonClass } from '@/components/ui';
 
 const SCHEDULE = [
   { time: '9:00', who: 'Paeng', what: 'Haircut + Hot Towel Shave', status: 'done' },
@@ -33,8 +34,7 @@ export function LandingPage() {
       <section className="border-b border-line">
         <div className="mx-auto grid max-w-6xl gap-12 px-4 py-14 sm:px-6 lg:grid-cols-[1.1fr,1fr] lg:items-center lg:py-20">
           <div>
-            <p className="eyebrow">Booking and queueing for barbershops, clinics and salons</p>
-            <h1 className="mt-4 max-w-xl text-[40px] font-semibold leading-[1.08] tracking-[-0.025em] text-ink sm:text-[52px]">
+            <h1 className="max-w-xl text-[40px] font-semibold leading-[1.08] tracking-[-0.025em] text-ink sm:text-[52px]">
               Fewer people waiting at the door. Fewer empty chairs.
             </h1>
             <p className="mt-5 max-w-lg text-[17px] leading-relaxed text-ink-2">
@@ -42,30 +42,23 @@ export function LandingPage() {
               the counter can get on with the work.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
-              <Link
-                to="/b/kanto-cuts"
-                className="inline-flex h-12 items-center rounded-md bg-pine-600 px-5 text-[15px] font-medium text-white hover:bg-pine-700"
-              >
-                Try the demo shop
+              <Link to="/demo" className={buttonClass('primary', 'lg')}>
+                Try the demo
               </Link>
-              <Link
-                to="/login"
-                className="inline-flex h-12 items-center rounded-md border border-line-strong bg-surface px-5 text-[15px] font-medium text-ink hover:border-ink-faint"
-              >
-                See the owner dashboard
+              <Link to="/register?next=/start" className={buttonClass('secondary', 'lg')}>
+                Set up my business
               </Link>
             </div>
             <p className="mt-4 text-[13px] text-ink-muted">
-              Demo sign-in: <span className="num text-ink-2">owner@demo.queueup</span> /{' '}
-              <span className="num text-ink-2">Demo12345!</span>
+              For barbershops, clinics and salons. No app to install for you or your customers.
             </p>
           </div>
 
           <div className="relative mx-auto mb-16 w-full max-w-md lg:mx-0">
             <div className="rounded-lg border border-line bg-surface">
               <div className="flex items-baseline justify-between border-b border-line px-5 py-3">
-                <p className="text-sm font-medium">Kanto Cuts · Today</p>
-                <p className="num text-xs text-ink-muted">Tue 6 Oct</p>
+                <p className="text-sm font-medium">Kanto Cuts, today</p>
+                <p className="text-xs text-ink-muted">3 barbers in</p>
               </div>
               <ol className="divide-y divide-line">
                 {SCHEDULE.map((row) => (
@@ -79,11 +72,11 @@ export function LandingPage() {
                       >
                         {row.what}
                       </span>
-                      <span className="text-ink-muted"> · {row.who}</span>
+                      <span className="text-ink-muted"> with {row.who}</span>
                     </span>
                     {row.status === 'now' && (
-                      <span className="rounded bg-marigold-100 px-1.5 py-0.5 font-mono text-2xs font-medium uppercase tracking-label text-marigold-600">
-                        In chair
+                      <span className="rounded bg-marigold-100 px-1.5 py-0.5 text-xs font-medium text-marigold-600">
+                        In the chair
                       </span>
                     )}
                   </li>
@@ -95,7 +88,7 @@ export function LandingPage() {
               aria-hidden="true"
             >
               <div className="px-4 pb-3 pt-3">
-                <p className="eyebrow">Walk-in</p>
+                <p className="text-xs text-ink-muted">Walk-in ticket</p>
                 <p className="num mt-1 text-[40px] font-semibold leading-none">#014</p>
               </div>
               <div className="ticket-tear" />
@@ -108,10 +101,7 @@ export function LandingPage() {
       <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6">
         <div className="grid gap-10 lg:grid-cols-[260px,1fr]">
           <div>
-            <p className="eyebrow">How a day runs</p>
-            <h2 className="mt-2 text-2xl font-semibold tracking-[-0.01em]">
-              Set it up once on a slow afternoon.
-            </h2>
+            <h2 className="text-2xl font-semibold tracking-[-0.01em]">Set it up once on a slow afternoon.</h2>
           </div>
           <ol className="border-t border-ink">
             {STEPS.map((step, index) => (
@@ -131,7 +121,7 @@ export function LandingPage() {
       <section className="border-t border-line bg-surface">
         <div className="mx-auto grid max-w-6xl gap-8 px-4 py-14 sm:px-6 md:grid-cols-3">
           <div>
-            <p className="eyebrow">Try it as a customer</p>
+            <h2 className="font-semibold">Try it as a customer</h2>
             <p className="mt-2 text-[15px] text-ink-2">
               Book a haircut at{' '}
               <Link to="/b/kanto-cuts" className="font-medium text-ink underline underline-offset-4">
@@ -145,7 +135,7 @@ export function LandingPage() {
             </p>
           </div>
           <div>
-            <p className="eyebrow">Try it as a walk-in</p>
+            <h2 className="font-semibold">Try it as a walk-in</h2>
             <p className="mt-2 text-[15px] text-ink-2">
               <Link to="/b/kanto-cuts/queue" className="font-medium text-ink underline underline-offset-4">
                 Take a ticket
@@ -158,10 +148,12 @@ export function LandingPage() {
             </p>
           </div>
           <div>
-            <p className="eyebrow">Try it as the owner</p>
+            <h2 className="font-semibold">Try it as the owner</h2>
             <p className="mt-2 text-[15px] text-ink-2">
-              Sign in as <span className="num text-[14px]">owner@demo.queueup</span> to see two months of
-              history, the calendar and the queue console.
+              <Link to="/demo" className="font-medium text-ink underline underline-offset-4">
+                Open the owner dashboard
+              </Link>{' '}
+              with two months of history, the calendar and the walk-in counter. No sign-up needed.
             </p>
           </div>
         </div>
