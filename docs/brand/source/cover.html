@@ -1,0 +1,67 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  html,body{margin:0;width:1640px;height:624px;overflow:hidden}
+  body{background:#F6F4EE;position:relative;font-family:'IBM Plex Sans',sans-serif;color:#17160F}
+  /* faint grid like a logbook page */
+  .grid{position:absolute;inset:0;background-image:
+      linear-gradient(#E4E0D5 1px,transparent 1px),linear-gradient(90deg,#E4E0D5 1px,transparent 1px);
+      background-size:52px 52px;opacity:.55}
+  .band{position:absolute;right:0;top:0;bottom:0;width:640px;background:#17160F}
+  /* Everything important lives in the centre ~1100px so mobile crops keep it */
+  .copy{position:absolute;left:290px;top:118px;width:620px}
+  .brand{display:flex;align-items:center;gap:16px}
+  .brand span{font-size:38px;font-weight:600;letter-spacing:-.02em}
+  .eyebrow{margin-top:44px;font-family:'IBM Plex Mono',monospace;font-size:17px;font-weight:500;
+           letter-spacing:.12em;text-transform:uppercase;color:#6C685C}
+  h1{margin:14px 0 0;font-size:66px;line-height:1.02;font-weight:700;letter-spacing:-.035em}
+  h1 em{font-style:normal;background:#F2BC1F;padding:0 10px;margin-left:-4px}
+  p{margin:22px 0 0;font-size:22px;line-height:1.45;color:#3C3930;max-width:560px}
+  .chips{margin-top:26px;display:flex;gap:10px;font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:500}
+  .chips span{border:1.5px solid #CDC7B6;padding:7px 12px;border-radius:5px;background:#fff}
+
+  /* Now-serving board */
+  .board{position:absolute;left:1020px;top:120px;width:350px;height:250px;background:#211F17;
+         border:2px solid #3C3930;border-radius:10px;box-sizing:border-box;padding:28px 30px}
+  .mono{font-family:'IBM Plex Mono',monospace}
+  .board .lbl{font-size:15px;letter-spacing:.14em;color:#9A9587;font-weight:500;display:flex;align-items:center;gap:10px}
+  .dot{width:10px;height:10px;border-radius:50%;background:#2E7350;box-shadow:0 0 0 4px rgba(46,115,80,.35)}
+  .board .num{white-space:nowrap;font-size:96px;font-weight:600;color:#F2BC1F;letter-spacing:-.02em;line-height:1;margin-top:22px;font-variant-numeric:tabular-nums}
+  .board .who{font-size:17px;color:#F6F4EE;margin-top:22px;letter-spacing:.04em}
+  .board .who b{color:#9A9587;font-weight:400}
+
+  /* paper tickets waiting in line */
+  .tickets{position:absolute;left:1020px;top:394px;display:flex;gap:14px}
+  .t{width:107px;height:96px;background:#F6F4EE;border-radius:6px;position:relative;box-sizing:border-box;padding:14px 14px 0}
+  .t:before,.t:after{content:"";position:absolute;top:50%;width:16px;height:16px;border-radius:50%;background:#17160F;transform:translateY(-50%)}
+  .t:before{left:-8px}.t:after{right:-8px}
+  .t .k{font-size:11px;letter-spacing:.14em;color:#6C685C;font-weight:500}
+  .t .n{white-space:nowrap;font-size:26px;font-weight:600;margin-top:8px;font-variant-numeric:tabular-nums}
+  .t .perf{position:absolute;left:14px;right:14px;bottom:14px;border-top:2px dashed #CDC7B6}
+  .t.dim{opacity:.55}
+</style></head><body>
+  <div class="grid"></div>
+  <div class="band"></div>
+
+  <div class="copy">
+    <div class="brand">
+      <svg viewBox="0 0 32 32" width="52" height="52"><rect width="32" height="32" rx="6" fill="#17160F"/><path d="M8 10.5h16M8 16h11M8 21.5h6" stroke="#F2BC1F" stroke-width="2.6" stroke-linecap="square"/></svg>
+      <span>QueueUp</span>
+    </div>
+    <div class="eyebrow">Booking + walk-in queues</div>
+    <h1>Book ahead.<br><em>Skip the pila.</em></h1>
+    <p>Online booking, live queue tickets and GCash deposits for clinics, barbershops, salons and repair shops.</p>
+  </div>
+
+  <div class="board">
+    <div class="lbl mono"><span class="dot"></span>NOW SERVING</div>
+    <div class="num mono">A-024</div>
+    <div class="who mono">COUNTER 2 <b>·</b> HAIRCUT</div>
+  </div>
+  <div class="tickets">
+    <div class="t"><div class="k mono">NEXT</div><div class="n mono">A-025</div><div class="perf"></div></div>
+    <div class="t"><div class="k mono">WAITING</div><div class="n mono">A-026</div><div class="perf"></div></div>
+    <div class="t dim"><div class="k mono">WAITING</div><div class="n mono">A-027</div><div class="perf"></div></div>
+  </div>
+</body></html>
