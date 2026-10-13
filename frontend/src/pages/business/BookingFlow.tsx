@@ -18,7 +18,15 @@ import {
 } from '@/components/ui';
 import { api, ApiError } from '@/lib/api';
 import { ANY_STAFF, slotOptions } from '@/lib/slots';
-import { addDays, formatDuration, formatLocalDate, formatPeso, formatTime, todayIn } from '@/lib/format';
+import {
+  addDays,
+  formatDuration,
+  formatLocalDate,
+  formatPeso,
+  formatTime,
+  shortName,
+  todayIn,
+} from '@/lib/format';
 import { queryKeys, useAvailability, usePublicTenant } from '@/lib/queries';
 import type { Booking, PaymentIntent, PublicTenant, Service, StaffAvailability } from '@/lib/types';
 
@@ -569,7 +577,7 @@ function StaffChips({
                 className={`h-8 w-8 text-xs ${selected ? '!bg-paper/15 !text-paper' : ''}`}
               />
             )}
-            <span className="font-medium">{option.name.split(' ')[0]}</span>
+            <span className="font-medium">{shortName(option.name)}</span>
             <span className={`num text-xs ${selected ? 'text-paper/60' : 'text-ink-muted'}`}>
               {full ? 'full' : `${option.open} open`}
             </span>

@@ -94,6 +94,14 @@ export function formatLocalDate(date: string): string {
   }).format(new Date(Date.UTC(y, m - 1, d)));
 }
 
+/** How staff are named in tight spaces: "Rafael", or "Dra. Bea" when the name starts with a title. */
+export function shortName(fullName: string): string {
+  const parts = fullName.trim().split(/\s+/);
+  return /^(dr|dra|doc|atty|engr)\.?$/i.test(parts[0] ?? '') && parts.length > 1
+    ? `${parts[0]} ${parts[1]}`
+    : (parts[0] ?? fullName);
+}
+
 export function ticketLabel(ticketNumber: number): string {
   return `#${String(ticketNumber).padStart(3, '0')}`;
 }

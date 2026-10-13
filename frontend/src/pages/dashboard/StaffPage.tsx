@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { shortName } from '@/lib/format';
 import { queryKeys } from '@/lib/queries';
 import type { Service, StaffMember, WorkingHoursRange } from '@/lib/types';
 import {
@@ -386,7 +387,7 @@ function StaffEditor({
 
       <div className="flex gap-2 lg:col-span-2">
         <Button onClick={save} loading={saving}>
-          Save {member.fullName.split(' ')[0]}&apos;s schedule
+          Save {shortName(member.fullName)}&apos;s schedule
         </Button>
       </div>
     </div>

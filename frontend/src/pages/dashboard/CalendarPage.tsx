@@ -9,6 +9,7 @@ import {
   formatTime,
   localDateOf,
   localMinutesOf,
+  shortName,
   todayIn,
 } from '@/lib/format';
 import { queryKeys } from '@/lib/queries';
@@ -563,9 +564,7 @@ function WeekAgenda({
                     <span className="num text-ink-muted">{formatTime(booking.startsAt, timeZone)}</span>{' '}
                     <span className="text-ink">{booking.customerName}</span>
                     <span className="block truncate text-ink-faint">{booking.serviceName}</span>
-                    <span className="block truncate text-ink-faint">
-                      with {booking.staffName.split(' ')[0]}
-                    </span>
+                    <span className="block truncate text-ink-faint">with {shortName(booking.staffName)}</span>
                   </button>
                 </li>
               ))}
