@@ -54,6 +54,18 @@ Without keys, deposit bookings stay "Awaiting deposit" and are released after 15
 
 Any SMTP server works. Typical values: `MAIL_PORT=587`, `MAIL_SMTP_AUTH=true`, `MAIL_STARTTLS=true`. Use a `MAIL_FROM` address on a domain verified with your provider.
 
+## 6. Families-abroad waitlist
+
+The page at `/abroad` collects an early-access list (OFWs who want to book and pay for relatives' visits, and clinics that want those patients). Add `?src=<where-you-posted>` to links you share, for example `/abroad?src=fb-ofw-riyadh`, and every signup records it.
+
+Download the list as CSV with the `ADMIN_TOKEN` that Render generated (Dashboard, `queueup-api`, Environment):
+
+```bash
+curl -H "X-Admin-Token: $ADMIN_TOKEN" https://<api>.onrender.com/api/admin/waitlist.csv -o waitlist.csv
+```
+
+Without the header, or with `ADMIN_TOKEN` unset, the endpoint answers 404.
+
 ## Environment variables reference
 
 | Variable | Required | Default (local) | Purpose |
@@ -64,6 +76,7 @@ Any SMTP server works. Typical values: `MAIL_PORT=587`, `MAIL_SMTP_AUTH=true`, `
 | `FRONTEND_ORIGIN` | yes | `http://localhost:5173` | CORS and WebSocket allowed origins (comma-separated) |
 | `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_SMTP_AUTH`, `MAIL_STARTTLS`, `MAIL_FROM` | for email | Mailpit | SMTP |
 | `PAYMONGO_SECRET_KEY`, `PAYMONGO_WEBHOOK_SECRET` | for deposits | empty | PayMongo |
+| `ADMIN_TOKEN` | no | empty (export disabled) | Enables `GET /api/admin/waitlist.csv` with header `X-Admin-Token` |
 | `SEED_DEMO` | no | `false` (`true` in compose) | Load the demo businesses |
 | `PORT` | no | `8080` | HTTP port (Render sets it) |
 | `VITE_API_URL` | frontend build | empty (same origin) | API base URL for the SPA |

@@ -176,3 +176,18 @@ React Router routes with lazy-loaded dashboard pages (Recharts lives in its own 
 - **Demo refresh.** The seeder now builds bookings from the staff hours and services stored in the database, and an hourly `@Scheduled` refresh closes out past confirmed bookings, fills any day in the last 60 or next 7 that has no demo bookings, and starts today's walk-in line if nobody has joined. Inserts use `ON CONFLICT DO NOTHING` so they never collide with real bookings made on the demo.
 
 **Consequences.** The deployed demo looks like a working shop on any day it is opened. Accessible names stayed stable except the booking flow, whose test now walks the three-step version.
+
+## ADR-028: Demand test for "families abroad"
+
+**Context.** Booking and queue software is crowded. A sharper problem: OFWs send money home for relatives' check-ups but cannot book the visit, pay the clinic directly, or confirm it happened. Telehealth vouchers exist for OFW families; booking and prepaying a real visit at the family's own local clinic, with proof of the visit, did not turn up.
+
+**Decision.** Test demand before building the product. `/abroad` is a public page with a waitlist for families and a separate one for clinics, stored in `waitlist_signup` (V6) through `POST /api/public/waitlist`:
+- one row per email per list; signing up again updates the details and keeps the first `source`, so attribution to the original post survives;
+- `?src=` / `utm_source` on the link is stored as `source`, so each Facebook group or post can be compared;
+- the endpoint shares the per-IP rate limit used for sign-in;
+- consent is required and recorded (`consented_at`); no medical information is collected;
+- `GET /api/admin/waitlist.csv` exports the list with formula-safe cells, guarded by `ADMIN_TOKEN` and answering 404 without it.
+
+Crawlers do not run the SPA, so a small Vite build step writes `dist/abroad/index.html` with its own title, description and `og:image`; Vercel serves it for `/abroad` before the SPA rewrite.
+
+**Consequences.** The product (family profiles, booking on someone else's behalf, international card payment, SMS reminders, proof-of-visit reports) is built only if the list shows real demand. `CsvCells` moved to `common` so both exports share it.

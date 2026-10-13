@@ -1,12 +1,12 @@
-package com.queueup.analytics;
+package com.queueup.common;
 
 /** RFC 4180 escaping plus protection against spreadsheet formula injection. */
-final class CsvCells {
+public final class CsvCells {
 
   private CsvCells() {
   }
 
-  static String escape(String value) {
+  public static String escape(String value) {
     if (value == null) {
       return "";
     }

@@ -1,6 +1,7 @@
 package com.queueup.analytics;
 
 import com.queueup.analytics.dto.AnalyticsSummary;
+import com.queueup.common.CsvCells;
 import com.queueup.common.exception.BadRequestException;
 import com.queueup.common.tenant.TenantAccess;
 import com.queueup.common.tenant.TenantContext;

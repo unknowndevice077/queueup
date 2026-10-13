@@ -57,6 +57,10 @@ Demo businesses: **Kanto Cuts Barbershop** (`/b/kanto-cuts`, no deposit, 3 barbe
 - Signed, idempotent PayMongo webhooks; pending deposits expire after 15 minutes
 - RFC 7807 errors with trace ids, structured JSON logs, rate-limited login
 
+### Families abroad (early access)
+
+`/abroad` tests a new direction: OFWs book and pay for a relative's visit at their local clinic and get proof it happened. It collects a waitlist with per-link attribution (`?src=`); see [DEPLOYMENT.md](docs/DEPLOYMENT.md#6-families-abroad-waitlist) for exporting it.
+
 ## Architecture
 
 ```mermaid

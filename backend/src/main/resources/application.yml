@@ -87,6 +87,8 @@ springdoc:
 queueup:
   frontend-origin: ${FRONTEND_ORIGIN:http://localhost:5173}
   seed-demo: ${SEED_DEMO:false}
+  # Guards GET /api/admin/waitlist.csv; leave empty to disable the export.
+  admin-token: ${ADMIN_TOKEN:}
   security:
     jwt-secret: ${JWT_SECRET:}
     access-token-ttl: PT15M

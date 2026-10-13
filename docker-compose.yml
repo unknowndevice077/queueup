@@ -50,6 +50,7 @@ services:
       PAYMONGO_SECRET_KEY: ${PAYMONGO_SECRET_KEY:-}
       PAYMONGO_WEBHOOK_SECRET: ${PAYMONGO_WEBHOOK_SECRET:-}
       SEED_DEMO: ${SEED_DEMO:-true}
+      ADMIN_TOKEN: ${ADMIN_TOKEN:-}
     ports:
       - "${BACKEND_PORT:-8080}:8080"
     healthcheck:

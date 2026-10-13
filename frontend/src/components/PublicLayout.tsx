@@ -19,7 +19,7 @@ export function Logo({ inverted = false }: { inverted?: boolean }) {
 }
 
 const navClass = ({ isActive }: { isActive: boolean }) =>
-  `rounded-md px-2.5 py-1.5 text-sm transition-colors duration-150 ${
+  `whitespace-nowrap rounded-md px-2.5 py-1.5 text-sm transition-colors duration-150 ${
     isActive ? 'bg-ink/[0.06] font-medium text-ink' : 'text-ink-muted hover:bg-ink/[0.04] hover:text-ink'
   }`;
 
@@ -67,7 +67,8 @@ export function PublicLayout() {
             ) : (
               <>
                 <NavLink to="/demo" className={navClass}>
-                  Try the demo
+                  <span className="sm:hidden">Demo</span>
+                  <span className="hidden sm:inline">Try the demo</span>
                 </NavLink>
                 <NavLink to="/login" className={navClass}>
                   Sign in

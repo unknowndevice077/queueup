@@ -10,6 +10,7 @@ spring:
 queueup:
   frontend-origin: http://localhost:5173
   seed-demo: false
+  admin-token: test-admin-token
   security:
     jwt-secret: dGVzdC1vbmx5LXNlY3JldC1mb3ItcXVldWV1cC1pbnRlZ3JhdGlvbi10ZXN0cy0zMmI=
     bcrypt-strength: 4

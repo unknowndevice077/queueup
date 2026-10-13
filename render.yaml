@@ -38,6 +38,8 @@ services:
         sync: false # e.g. https://your-app.vercel.app
       - key: SEED_DEMO
         value: "true"
+      - key: ADMIN_TOKEN
+        generateValue: true
       - key: JAVA_OPTS
         value: "-XX:MaxRAMPercentage=75 -XX:+ExitOnOutOfMemoryError -Xss512k"
       - key: MAIL_HOST

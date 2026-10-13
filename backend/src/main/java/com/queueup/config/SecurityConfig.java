@@ -62,6 +62,8 @@ public class SecurityConfig {
         .authorizeHttpRequests(auth -> auth
             .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
             .requestMatchers(PUBLIC_PATHS).permitAll()
+            // Admin exports check X-Admin-Token themselves (and answer 404 without it); no user session involved.
+            .requestMatchers("/api/admin/**").permitAll()
             .requestMatchers("/actuator/**").denyAll()
             .anyRequest().authenticated())
         .exceptionHandling(errors -> errors

@@ -1,4 +1,4 @@
-package com.queueup.analytics;
+package com.queueup.common;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

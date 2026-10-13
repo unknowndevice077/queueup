@@ -41,7 +41,8 @@ public abstract class IntegrationTest {
 
   private static final String TRUNCATE_ALL = """
       TRUNCATE audit_log, notification_log, webhook_event, payment, queue_counter, queue_entry, booking, blackout,
-               working_hours, staff_service, service_offering, refresh_token, membership, app_user, tenant CASCADE
+               working_hours, staff_service, service_offering, refresh_token, membership, app_user, tenant,
+               waitlist_signup CASCADE
       """;
 
   @Autowired

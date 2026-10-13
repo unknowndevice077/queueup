@@ -14,7 +14,8 @@ import org.springframework.web.filter.OncePerRequestFilter;
 /** Applies {@link AuthRateLimiter} to the credential endpoints and answers 429 when exceeded. */
 public class AuthRateLimitFilter extends OncePerRequestFilter {
 
-  private static final Set<String> LIMITED_PATHS = Set.of("/api/auth/login", "/api/auth/register");
+  private static final Set<String> LIMITED_PATHS = Set.of(
+      "/api/auth/login", "/api/auth/register", "/api/public/waitlist");
 
   private final AuthRateLimiter rateLimiter;
   private final ProblemResponseWriter problemWriter;
